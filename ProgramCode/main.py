@@ -17,6 +17,7 @@ import custom.central_widget as c_central_widget
 import custom.docker_widget as c_dock_widget
 import custom.modal_dialogs as c_modal_dialogs
 import graphs
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 ##############
 # Setup Code #
@@ -58,7 +59,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         # Create the controller that handles all of the functionalities of the program
         self.controller = controller.Controller(self)
         # Create graph objects
-        self.first_graph = graphs.FirstGraph()
+        self.first_dma_graph = graphs.FirstDMA()
         self.second_graph = graphs.SecondGraph()
         self.third_graph = graphs.ThirdGraph()
         self.fourth_graph = graphs.FourthGraph()
@@ -68,26 +69,28 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         #self.kappa_graph = graphs.KappaGraph()
 
         # create left dock widget for information related stuff
-        [self.scaninfo_docker, self.sigmoid_docker, self.kappa_docker] = self.create_left_docker()
+        self.scaninfo_docker = self.create_left_docker()
+        # self.sigmoid_docker_widget = self.sigmoid_docker.widget()
         self.scaninfo_docker_widget = self.scaninfo_docker.widget()
-        self.sigmoid_docker_widget = self.sigmoid_docker.widget()
-        self.kappa_docker_widget = self.kappa_docker.widget()
-        # set options for left doc
+        # self.kappa_docker_widget = self.kappa_docker.widget()
+        # # set options for left doc
         dock_options = Qw.QMainWindow.VerticalTabs | Qw.QMainWindow.AnimatedDocks | Qw.QMainWindow.ForceTabbedDocks
         self.setDockOptions(dock_options)
-        # create central widget
-        [self.stacked_central_widget, self.central_widget_alignscan,
-         self.central_widget_kappa] = self.create_central_widget()
+        # # create central widget
+        [self.stacked_central_widget, self.central_widget_alignscan] = self.create_central_widget()
         # create menu bar
         # self.file_menu, self.action_menu, self.window_menu = self.create_menus()
         self.file_menu = self.action_menu = self.window_menu = Qw.QMenu("&Temp")
         self.set_menu_bar_by_stage()
+
+        # Create toolbar, passing canvas as first parament, parent (self, the MainWindow) as second.
+
         # create progress bar
-        self.progress_dialog = self.create_progress_bar()
-        self.close_progress_bar()
+        # self.progress_dialog = self.create_progress_bar()
+        # self.close_progress_bar()
         # showMaximized must be at end of init
         self.showMaximized()
-        self.reset_view()
+        # self.reset_view()
         # if isTest:  # TEST
         #     self.open_files()
 
@@ -295,6 +298,81 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         # noinspection PyUnresolvedReferences
         self.font = Qg.QFont(font.family(), size)
         app.setFont(self.font)
+
+    ##############################
+    # Create Widgets and Dockers #
+    ##############################
+
+    def create_left_docker(self):
+        """
+        Creates the left docker screen and adds menu options to the Window menu bar section
+
+        :returns:
+
+            - **scaninfo_docker** - Qw.QDockWidget object that represents the Scan Information screen
+            - **scan_docker_widget** - c_dock_widget.DockerScanInformation object that contains the lay out for the
+              Scan Information screen
+            - **sigmoid_docker** - Qw.QDockWidget object that represents the Sigmoid Parameters screen
+            - **sigmoid_docker_widget** - c_dock_widget.DockerSigmoidWidget object that contains the lay out for the
+              Sigmoid Parameters screen
+            - **kappa_docker** - Qw.QDockWidget object that represents the Kappa Values screen
+            - **kappa_docker_widget** - c_dock_widget.DockerKappaWidget object that contains the lay out for the Kappa
+              Values screen
+        """
+        # create left docker
+        scaninfo_docker = Qw.QDockWidget("Scan &Information", self)
+        scan_docker_widget = c_dock_widget.DockerScanInformation(self.controller)
+        scaninfo_docker.setWidget(scan_docker_widget)
+        scaninfo_docker.setAllowedAreas(Qc.Qt.RightDockWidgetArea | Qc.Qt.LeftDockWidgetArea)
+        scaninfo_docker.setFeatures(Qw.QDockWidget.DockWidgetMovable | Qw.QDockWidget.DockWidgetClosable)
+        self.addDockWidget(Qc.Qt.LeftDockWidgetArea, scaninfo_docker)
+        # create sigmoid docker
+        # sigmoid_docker = Qw.QDockWidget("Sigmoid &Parameters", self)
+        # sigmoid_docker_widget = c_dock_widget.DockerSigmoidWidget(self.controller)
+        # sigmoid_docker.setWidget(sigmoid_docker_widget)
+        # sigmoid_docker.setAllowedAreas(Qc.Qt.RightDockWidgetArea | Qc.Qt.LeftDockWidgetArea)
+        # sigmoid_docker.setFeatures(Qw.QDockWidget.DockWidgetMovable | Qw.QDockWidget.DockWidgetClosable)
+        # self.addDockWidget(Qc.Qt.LeftDockWidgetArea, sigmoid_docker)
+        #self.tabifyDockWidget(scaninfo_docker)
+        # create kappa docker
+        # kappa_docker = Qw.QDockWidget("&Kappa Values", self)
+        # kappa_docker_widget = c_dock_widget.DockerKappaWidget(self.controller, self.kappa_graph)
+        # kappa_docker.setWidget(kappa_docker_widget)
+        # kappa_docker.setAllowedAreas(Qc.Qt.RightDockWidgetArea | Qc.Qt.LeftDockWidgetArea)
+        # kappa_docker.setFeatures(Qw.QDockWidget.DockWidgetMovable | Qw.QDockWidget.DockWidgetClosable)
+        # self.addDockWidget(Qc.Qt.LeftDockWidgetArea, kappa_docker)
+        return scaninfo_docker
+
+    def create_central_widget(self):
+        """
+        Creates the central widget that appear in the main area.
+        The central widget includes the widgets for the align scans and kappa sections.
+
+        :returns:
+
+            - **stacked_central_widget** - Qw.QStackedWidget object that represents where the center widgets appear
+            - **central_widget_alignscan** - c_central_widget.CentralWidgetScans object that represents
+              the four graphs that are displayed during the alignment phase
+            - **central_widget_kappa** - c_central_widget.CentralWidgetKappa object that represents the kappa graph.
+
+        """
+        # create alignment central widget
+        central_widget_alignscan = c_central_widget.CentralWidgetScans(self)
+        # central_widget_kappa = c_central_widget.CentralWidgetKappa(self)
+        stacked_central_widget = Qw.QStackedWidget()
+        stacked_central_widget.addWidget(central_widget_alignscan)
+        #stacked_central_widget.addWidget(central_widget_kappa)
+        # lock out the menus that we will not use
+        self.setCentralWidget(stacked_central_widget)
+        return central_widget_alignscan, stacked_central_widget
+
+    def switch_central_widget(self):  # RESEARCH How code works after controller.start is added
+        """
+        Toggles graph display in middle of screen between Alighment Graphs and Kappa Graphs
+        """
+        # TODO issues/36  This is a strange way of switching
+        new_index = self.stacked_central_widget.count() - self.stacked_central_widget.currentIndex() - 1
+        self.stacked_central_widget.setCurrentIndex(new_index)
 
 
 if __name__ == "__main__":
