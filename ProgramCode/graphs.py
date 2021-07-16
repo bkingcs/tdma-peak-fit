@@ -12,11 +12,13 @@ import numpy as np
 import pandas as pd
 
 # Internal Packages
-import data.klines
-import helper_functions as hf
+import calculator as calculator
+# import data.klines
+# import helper_functions as hf
+from matplotlib.ticker import FormatStrFormatter
 
 
-class FirstGraph(FigureCanvas):
+class FirstDMA(FigureCanvas):
     """
     Plotting a graph to start creating plain graphs for when
     the code comes in
@@ -25,19 +27,51 @@ class FirstGraph(FigureCanvas):
         self.fig, self.ax = plt.subplots()
         super(self.__class__, self).__init__(self.fig)
 
-        # setting up points for the graph
-        x = np.linspace(0, 2 * np.pi, 400)
-        y = np.sin(x ** 2)
+        plt.style.use('seaborn-whitegrid')
 
-        # plotting the graph
-        self.ax.plot(x, y)
+        # Set parameters
+        (dp, dp_left_bottom, dp_right_bottom) = self.calculate_parameters()
 
-        # set up the figure and the axes
-        self.ax.set_title("Practice Plot Graph")
-        self.ax.set_xlabel("Numbers")
-        self.ax.set_ylabel("More Numbers")
+        x = [dp_left_bottom, dp, dp_right_bottom]
+        y = [0, 1, 0]
+        # TODO - Fix the center height
 
-        plt.tight_layout
+        self.ax.set_xscale('log')
+        self.ax.set_xlim(200, 1000)
+        self.ax.set_xticks(np.arange(200, 1000, 100))
+        self.ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+
+        # TODO - Set "Dp" for x axis label
+        self.ax.set_ylim(0, 1)
+
+        plt.title("DMA 1 theoretical distribution")
+        plt.plot(x, y)
+        plt.grid(True)
+
+    def calculate_parameters(self):
+        Q_sh = 10.0  # Sheath in flow rate
+        Q_aIn = 1.0  # Aerosol inlet flow (Polydisperse)
+        V = 10000.0  # Volts (allow 1-10000, anything else should be flagged)
+
+        IS_SYMMETRIC = True
+
+        # If user chooses asymmetric flows then these two need to appear as well, otherwise, they are matched as indicated:
+        if IS_SYMMETRIC:
+            Q_excess = Q_sh
+            Q_aOut = Q_aIn
+        else:
+            # User will need to enter these if in asymmetric mode
+            Q_excess = 10.0
+            Q_aOut = 1.0
+
+        (Zp, Zp_fwhh) = calculator.compute_Zp(Q_sh, Q_aIn, Q_excess, Q_aOut, V)
+
+        dp = calculator.Zp_to_Dp(Zp, Cs=2)
+        dp_left_bottom = calculator.Zp_to_Dp(Zp + Zp_fwhh)
+        dp_right_bottom = calculator.Zp_to_Dp(Zp - Zp_fwhh)
+
+        return dp, dp_left_bottom, dp_right_bottom
+
 
 class SecondGraph(FigureCanvas):
     """
@@ -58,8 +92,7 @@ class SecondGraph(FigureCanvas):
 
         # set up the figure and the axes
         self.fig.suptitle("Practice Plot Graph")
-        self.ax.set_xlabel("Numbers")
-        self.ax.set_ylabel("More Numbers")
+
 
 class ThirdGraph(FigureCanvas):
     """
@@ -79,9 +112,12 @@ class ThirdGraph(FigureCanvas):
         self.ax2.plot(x, -y)
 
         # set up the figure and the axes
-        self.ax.set_title("Practice Plot Graph")
-        self.ax.set_xlabel("Numbers")
-        self.ax.set_ylabel("More Numbers")
+        self.fig.suptitle("Practice Plot Graph")
+
+        # set up the figure and the axes
+        # self.ax.set_title("Practice Plot Graph")
+        # self.ax.set_xlabel("Numbers")
+        # self.ax.set_ylabel("More Numbers")
 
 class FourthGraph(FigureCanvas):
     """
@@ -93,15 +129,18 @@ class FourthGraph(FigureCanvas):
         super(self.__class__, self).__init__(self.fig)
 
         # set up the figure and the axes
-        self.ax.set_title("Practice Plot Graph")
-        self.ax.set_xlabel("Numbers")
-        self.ax.set_ylabel("More Numbers")
+        # self.ax.set_title("Practice Plot Graph")
+        # self.ax.set_xlabel("Numbers")
+        # self.ax.set_ylabel("More Numbers")
 
         # get the data calculated for the normal distribution
         data = self.normal_distribution()
 
         # create histogram
         n, bins, patches = self.ax.hist(data, bins='auto', rwidth=0.85, alpha=0.75)
+
+        # set up the figure and the axes
+        self.fig.suptitle("Normal Distribution")
 
         # plot graph
         plt.tight_layout()

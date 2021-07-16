@@ -14,10 +14,9 @@ import re
 import time
 
 # Internal Packages
-from algorithm import auto_shift
-from algorithm import sigmoid_fit
-import constants as const
-import helper_functions as hf
+# from algorithm import auto_shift
+# import constants as const
+# import helper_functions as hf
 import scan
 
 # Set logger for this module
@@ -65,40 +64,40 @@ class Controller(object):
     def __init__(self, view):
         self.view = view
         # Variables consistent across scans
-        self.scan_up_time = None
-        self.scan_down_time = None
-        self.cpc_sample_flow = None
-        self.counts_to_conc_conv = None
-        # Variables set with set_attributes_default method
+        # self.scan_up_time = None
+        # self.scan_down_time = None
+        # self.cpc_sample_flow = None
+        # self.counts_to_conc_conv = None
+        # # Variables set with set_attributes_default method
         self.scans = None
-        self.data_files = None
-        self.ccnc_data = None
-        self.smps_data = None
-        self.experiment_date = None
-        self.scan_duration = None
-        self.base_shift_factor = None
-        self.curr_scan_index = None
-        self.b_limits = None
-        self.asym_limits = None
-        self.stage = "init"
-        self.save_name = None
-        self.project_folder = None
+        # self.data_files = None
+        # self.ccnc_data = None
+        # self.smps_data = None
+        # self.experiment_date = None
+        # self.scan_duration = None
+        # self.base_shift_factor = None
+        # self.curr_scan_index = None
+        # self.b_limits = None
+        # self.asym_limits = None
+        # self.stage = "init"
+        # self.save_name = None
+        # self.project_folder = None
         # variables for calculating kappa
         # QUESTION What can be constants?
-        self.sigma = 0.072
-        self.temp = 298.15
-        self.dd_1 = 280
-        self.i_kappa_1 = 0.00567
-        self.dd_2 = 100
-        self.i_kappa_2 = 0.6
-        self.solubility = 0.03
-        self.kappa_excel = None
+        # self.sigma = 0.072
+        # self.temp = 298.15
+        # self.dd_1 = 280
+        # self.i_kappa_1 = 0.00567
+        # self.dd_2 = 100
+        # self.i_kappa_2 = 0.6
+        # self.solubility = 0.03
+        # self.kappa_excel = None
         # Variables for calculating kappa set with set_attributes_default method
-        self.kappa_calculate_dict = None
-        self.alpha_pinene_dict = None
-        self.valid_kappa_points = None
-        self.set_attributes_default()
-        self.smooth_method = None  # TODO issues/41
+        #self.kappa_calculate_dict = None
+        # self.alpha_pinene_dict = None
+        # self.valid_kappa_points = None
+        # self.set_attributes_default()
+        # self.smooth_method = None  # TODO issues/41
 
     ####################
     # Resetting Values #
@@ -125,7 +124,7 @@ class Controller(object):
         self.asym_limits = [0.75, 1.5]
         self.stage = "init"
         self.save_name = None
-        self.kappa_calculate_dict = {}
+        #self.kappa_calculate_dict = {}
         self.alpha_pinene_dict = {}
         self.valid_kappa_points = {}
 
@@ -214,171 +213,132 @@ class Controller(object):
         self.post_align_sanity_check()
         self.switch_to_scan(0)
 
-    def export_scans(self, filename):
-        """
-        Exports all scans to excel.  Used ONLY For debugging.
+    # def export_scans(self, filename):
+    #     """
+    #     Exports all scans to excel.  Used ONLY For debugging.
+    #
+    #     :param str filename: The name to save the file as.  Can include directory structure,
+    #                          be relative to cwd or absolute.
+    #     """
+    #     import export_data
+    #     export_data.export_scans(self.scans, filename)
 
-        :param str filename: The name to save the file as.  Can include directory structure,
-                             be relative to cwd or absolute.
-        """
-        import export_data
-        export_data.export_scans(self.scans, filename)
+    # def correct_charges(self):
+    #     """
+    #     Correct the charges of all the scans.
+    #     """
+    #     # QUESTION What does this mean? - Document the answer
+    #     # Correcting charges
+    #     self.view.init_progress_bar("Correcting charges...")
+    #     for i in range(len(self.scans)):
+    #         self.view.update_progress_bar(100 * (i + 1) // len(self.scans))
+    #         self.scans[i].correct_charges()
+    #     self.view.close_progress_bar()
+    #     self.view.show_sigmoid_docker()
+    #     self.stage = "sigmoid"
+    #     self.switch_to_scan(0)
 
-    def correct_charges(self):
-        """
-        Correct the charges of all the scans.
-        """
-        # QUESTION What does this mean? - Document the answer
-        # Correcting charges
-        self.view.init_progress_bar("Correcting charges...")
-        for i in range(len(self.scans)):
-            self.view.update_progress_bar(100 * (i + 1) // len(self.scans))
-            self.scans[i].correct_charges()
-        self.view.close_progress_bar()
-        self.view.show_sigmoid_docker()
-        self.stage = "sigmoid"
-        self.switch_to_scan(0)
 
-    def auto_fit_sigmoids(self):
-        """
-        Automatically fits the sigmoid lines and updates the display.
-        """
-        # COMBAKL Sigmoid
-        self.view.init_progress_bar("Auto fitting sigmoid...")
-        for i in range(len(self.scans)):
-            self.view.update_progress_bar(100 * (i + 1) // len(self.scans))
-            self.auto_fit_one_sigmoid(i)
+    # def cal_kappa(self):
+    #     """
+    #     # REVIEW Documentation
+    #     """
+    #     # COMBAKL Kappa
+    #     self.calculate_all_kappa_values()
+    #     self.calculate_average_kappa_values()
+    #     self.stage = "kappa"
+    #     self.view.switch_to_kappa_view()
 
-        self.view.close_progress_bar()
-        self.switch_to_scan(0)
-
-    def auto_fit_one_sigmoid(self, scan_index):
-        """
-        # REVIEW Documentation
-
-        :param scan_index:
-        :type scan_index:
-        :return:
-        :rtype:
-        """
-        a_scan = self.scans[scan_index]
-        if a_scan.status_code == 0:
-            try:
-                sigmoid_fit.get_sigmoid_info(a_scan)
-                a_scan.sigmoid_status = True
-            except NotImplementedError as e:
-                a_scan.sigmoid_status = False
-                logger.warning("Scan: %d - NotImplementedError: %s" % (scan_index, str(e)))
-            except OverflowError as e:
-                a_scan.sigmoid_status = False
-                logger.warning("Scan: %d - OverflowError: %s" % (scan_index, str(e)))
-            except RuntimeWarning as e:
-                a_scan.sigmoid_status = False
-                logger.warning("Scan: %d - RuntimeWarning Error: %s" % (scan_index, str(e)))
-            except RuntimeError as e:
-                a_scan.sigmoid_status = False
-                logger.warning("Scan: %d - RuntimeError Error: %s" % (scan_index, str(e)))
-
-    def cal_kappa(self):
-        """
-        # REVIEW Documentation
-        """
-        # COMBAKL Kappa
-        self.calculate_all_kappa_values()
-        self.calculate_average_kappa_values()
-        self.stage = "kappa"
-        self.view.switch_to_kappa_view()
-
-    def calculate_all_kappa_values(self):
-        """
-        # REVIEW Documentation
-        """
-        # COMBAKL Kappa
-        if self.kappa_excel is None:
-            self.kappa_excel = pd.read_csv(StringIO(ProgramCode.data.kCal.csv_codes), header=None)
-        lookup = self.kappa_excel
-        a_param = 0.00000869251 * self.sigma / self.temp
-        # asc = (exp(sqrt(4 * a_param ** 3 / (27 * self.i_kappa_1 * (self.dd_1 * 0.000000001) ** 3))) - 1) * 100
-        # Calculate each kappa
-        ss_and_dps = []
-        for i in range(len(self.scans)):
-            a_scan = self.scans[i]
-            if not a_scan.is_valid() or a_scan.true_super_sat is None:
-                continue
-            ss = a_scan.true_super_sat
-            activation = a_scan.get_activation()
-            for j in range(len(a_scan.dp50)):
-                dp_50 = a_scan.dp50[j]
-                # REVIEW kset Create ss_and_dps
-                ss_and_dps.append([i, ss, dp_50, activation])
-        for i in range(len(ss_and_dps)):
-            # REVIEW kset Create use ss_and_dps
-            scan_index = float(ss_and_dps[i][0])
-            ss = float(ss_and_dps[i][1])
-            dp_50 = float(ss_and_dps[i][2])
-            activation = float(ss_and_dps[i][3])
-            row_index = int(math.floor(dp_50 - 9))
-            match_row = list(lookup.iloc[row_index][1:])
-            value_row = list(lookup.iloc[0][1:])
-            a = hf.get_correct_num(match_row, ss)
-            c_index = a[1]
-            a = a[0]
-            if c_index != (len(match_row) - 1):
-                b = match_row[c_index + 1]
-                c = value_row[c_index]
-                d = value_row[c_index + 1]
-            else:
-                c = value_row[c_index]
-                b = 0
-                d = 0
-            apparent_kappa = (ss - (a - (a - b) / (c - d) * c)) / ((a - b) / (c - d))
-            analytic_kappa = (4 * a_param ** 3) / (27 * (dp_50 * 0.000000001) ** 3 * math.log(ss / 100 + 1) ** 2)
-            deviation_percentage = (apparent_kappa - analytic_kappa) / apparent_kappa * 100
-            if ss in list(self.kappa_calculate_dict.keys()):
-                # REVIEW kset set kappa dict values, key = ss
-                self.kappa_calculate_dict[ss].append([scan_index, dp_50, apparent_kappa, activation,
-                                                      analytic_kappa, deviation_percentage])
-            else:
-                # REVIEW kset set kappa dict values, key = ss
-                self.kappa_calculate_dict[ss] = ([[scan_index, dp_50, apparent_kappa, activation,
-                                                   analytic_kappa, deviation_percentage]])
-            # REVIEW kset set value kappa points key, value = true
-            self.valid_kappa_points[(scan_index, dp_50, ss, activation)] = True
-
-    def calculate_average_kappa_values(self):
-        """
-        # REVIEW Documentation
-        """
-        # COMBAKL Kappa
-        # Calculate the kappa values for each supersaturation percentage. The values are average of all scans with the
-        # same supersaturation        self.alpha_pinene_dict = {}
-        # REVIEW kset use kappa dict
-        for a_key in list(self.kappa_calculate_dict.keys()):
-            scan_list_at_ss = self.kappa_calculate_dict[a_key]
-            temp_dp50_list = []
-            dp_50s = []
-            apparent_kappas = []
-            analytical_kappas = []
-            mean_of_stds = []
-            for aSS in scan_list_at_ss:
-                # scan_index, dp_50, apparent_kappa, activation, analytic_kappa, deviation_percentage
-                dp_50s.append((aSS[0], aSS[1], aSS[3]))
-                # REVIEW kset use valid kappa points
-                if self.valid_kappa_points[(aSS[0], aSS[1], a_key, aSS[3])]:
-                    temp_dp50_list.append(aSS[1])
-                    apparent_kappas.append(aSS[2])
-                    analytical_kappas.append(aSS[4])
-                    mean_of_stds.append(aSS[5])
-            mean_dp = np.average(temp_dp50_list)
-            std_dp = np.std(temp_dp50_list)
-            mean_app = np.average(apparent_kappas)
-            std_app = np.std(apparent_kappas)
-            mean_ana = np.average(analytical_kappas)
-            std_ana = np.std(analytical_kappas)
-            mean_dev = np.average(mean_of_stds)
-            dev_mean = (mean_app - mean_ana) / mean_app * 100
-            self.alpha_pinene_dict[a_key] = (
-                mean_dp, std_dp, mean_app, std_app, mean_ana, std_ana, mean_dev, dev_mean, dp_50s)
+    # def calculate_all_kappa_values(self):
+    #     """
+    #     # REVIEW Documentation
+    #     """
+    #     # COMBAKL Kappa
+    #     if self.kappa_excel is None:
+    #         self.kappa_excel = pd.read_csv(StringIO(ProgramCode.data.kCal.csv_codes), header=None)
+    #     lookup = self.kappa_excel
+    #     a_param = 0.00000869251 * self.sigma / self.temp
+    #     # asc = (exp(sqrt(4 * a_param ** 3 / (27 * self.i_kappa_1 * (self.dd_1 * 0.000000001) ** 3))) - 1) * 100
+    #     # Calculate each kappa
+    #     ss_and_dps = []
+    #     for i in range(len(self.scans)):
+    #         a_scan = self.scans[i]
+    #         if not a_scan.is_valid() or a_scan.true_super_sat is None:
+    #             continue
+    #         ss = a_scan.true_super_sat
+    #         activation = a_scan.get_activation()
+    #         for j in range(len(a_scan.dp50)):
+    #             dp_50 = a_scan.dp50[j]
+    #             # REVIEW kset Create ss_and_dps
+    #             ss_and_dps.append([i, ss, dp_50, activation])
+    #     for i in range(len(ss_and_dps)):
+    #         # REVIEW kset Create use ss_and_dps
+    #         scan_index = float(ss_and_dps[i][0])
+    #         ss = float(ss_and_dps[i][1])
+    #         dp_50 = float(ss_and_dps[i][2])
+    #         activation = float(ss_and_dps[i][3])
+    #         row_index = int(math.floor(dp_50 - 9))
+    #         match_row = list(lookup.iloc[row_index][1:])
+    #         value_row = list(lookup.iloc[0][1:])
+    #         a = hf.get_correct_num(match_row, ss)
+    #         c_index = a[1]
+    #         a = a[0]
+    #         if c_index != (len(match_row) - 1):
+    #             b = match_row[c_index + 1]
+    #             c = value_row[c_index]
+    #             d = value_row[c_index + 1]
+    #         else:
+    #             c = value_row[c_index]
+    #             b = 0
+    #             d = 0
+    #         apparent_kappa = (ss - (a - (a - b) / (c - d) * c)) / ((a - b) / (c - d))
+    #         analytic_kappa = (4 * a_param ** 3) / (27 * (dp_50 * 0.000000001) ** 3 * math.log(ss / 100 + 1) ** 2)
+    #         deviation_percentage = (apparent_kappa - analytic_kappa) / apparent_kappa * 100
+    #         if ss in list(self.kappa_calculate_dict.keys()):
+    #             # REVIEW kset set kappa dict values, key = ss
+    #             self.kappa_calculate_dict[ss].append([scan_index, dp_50, apparent_kappa, activation,
+    #                                                   analytic_kappa, deviation_percentage])
+    #         else:
+    #             # REVIEW kset set kappa dict values, key = ss
+    #             self.kappa_calculate_dict[ss] = ([[scan_index, dp_50, apparent_kappa, activation,
+    #                                                analytic_kappa, deviation_percentage]])
+    #         # REVIEW kset set value kappa points key, value = true
+    #         self.valid_kappa_points[(scan_index, dp_50, ss, activation)] = True
+    #
+    # def calculate_average_kappa_values(self):
+    #     """
+    #     # REVIEW Documentation
+    #     """
+    #     # COMBAKL Kappa
+    #     # Calculate the kappa values for each supersaturation percentage. The values are average of all scans with the
+    #     # same supersaturation        self.alpha_pinene_dict = {}
+    #     # REVIEW kset use kappa dict
+    #     for a_key in list(self.kappa_calculate_dict.keys()):
+    #         scan_list_at_ss = self.kappa_calculate_dict[a_key]
+    #         temp_dp50_list = []
+    #         dp_50s = []
+    #         apparent_kappas = []
+    #         analytical_kappas = []
+    #         mean_of_stds = []
+    #         for aSS in scan_list_at_ss:
+    #             # scan_index, dp_50, apparent_kappa, activation, analytic_kappa, deviation_percentage
+    #             dp_50s.append((aSS[0], aSS[1], aSS[3]))
+    #             # REVIEW kset use valid kappa points
+    #             if self.valid_kappa_points[(aSS[0], aSS[1], a_key, aSS[3])]:
+    #                 temp_dp50_list.append(aSS[1])
+    #                 apparent_kappas.append(aSS[2])
+    #                 analytical_kappas.append(aSS[4])
+    #                 mean_of_stds.append(aSS[5])
+    #         mean_dp = np.average(temp_dp50_list)
+    #         std_dp = np.std(temp_dp50_list)
+    #         mean_app = np.average(apparent_kappas)
+    #         std_app = np.std(apparent_kappas)
+    #         mean_ana = np.average(analytical_kappas)
+    #         std_ana = np.std(analytical_kappas)
+    #         mean_dev = np.average(mean_of_stds)
+    #         dev_mean = (mean_app - mean_ana) / mean_app * 100
+    #         self.alpha_pinene_dict[a_key] = (
+    #             mean_dp, std_dp, mean_app, std_app, mean_ana, std_ana, mean_dev, dev_mean, dp_50s)
 
     ############################
     # New Project File Parsing #
@@ -459,164 +419,6 @@ class Controller(object):
             a_scan.set_counts_2_conc(self.counts_to_conc_conv)
             a_scan.set_cpc_sample_flow(self.cpc_sample_flow)
 
-    def get_normalized_concentration(self):
-        """
-        Updates the scans objects via the following scan methods:
-
-            * :class:`~scan.Scan.add_to_diameter_midpoints`  The diameter midpoints
-            * :class:`~scan.Scan.add_to_raw_normalized_concs`  # RESEARCH In English?
-
-        Normalized flow_rate is also called dN/dLogDp, which is the notation used in the graph. For further information
-        see `tsi documentation
-        <https://www.tsi.com/getmedia/1621329b-f410-4dce-992b-e21e1584481a/PR-001-RevA_Aerosol-Statistics-AppNote?ext=.pdf>`_.
-        """
-        # DOCQUESTION Verify comment in docstring from original code is correction "Normalized...."
-        start_line_index = 1
-        end_line_index = 0
-        # Find the first line that is not a value.  This is the end of the range
-        for i in range(1, len(self.smps_data)):
-            if re.search('[a-zA-Z]', self.smps_data[i][0]):
-                end_line_index = i
-                break
-        # For each line in the range, get the diameter midpoints and add to each scan
-        for i in range(start_line_index, end_line_index):
-            for j in range(len(self.scans)):
-                a_scan = self.scans[j]
-                a_scan.add_to_diameter_midpoints(self.smps_data[i][0])  # RESEARCH efficiency of pulling same i times
-                a_scan.add_to_raw_normalized_concs(self.smps_data[i][j + 1])
-
-    def get_smps_counts(self):
-        """
-        Updates the scans objects via the following scan methods:
-
-        * :class:`~scan.Scan.add_to_raw_smps_counts`  The SMPS Counts
-        * :class:`~scan.Scan.add_to_ave_smps_diameters`  The average SMPS diameters across all scans
-        """
-        #########################################
-        # Determine where data is in file
-        start_line_index = 0
-        end_line_index = len(self.smps_data) - 1  # DOCQUESTION - minus one to ignore the "Comments" line - but this ok?
-        # Find where second data section begins
-        for i in range(3, len(self.smps_data)):  # DOCQUESTION - why start with 3?
-            # Find beginning of middle text section
-            if re.search('[a-zA-Z]', self.smps_data[i][0]):
-                for j in range(i + 1, len(self.smps_data)):
-                    # Find end of middle text section
-                    if not re.search('[a-zA-Z]', self.smps_data[j][0]):
-                        start_line_index = j
-                        break
-                break
-        target_time = 1
-        curr_line_index = start_line_index
-        count_by_scans = [0] * len(self.scans)
-        sum_diameter = 0
-        #########################################
-        # Find values and update scans
-        # DOCQUESTION Confirm calculations for ave_diamter are wrong
-        while True:
-            curr_time = float(self.smps_data[curr_line_index][0])
-            for j in range(0, len(self.scans)):
-                diameter = float(self.smps_data[curr_line_index][j * 2 + 1])
-                count = int(self.smps_data[curr_line_index][j * 2 + 2])
-                sum_diameter += diameter * count
-                count_by_scans[j] += count
-            if hf.are_floats_equal(curr_time, target_time) or curr_line_index == end_line_index:
-                target_time += 1
-                if sum(count_by_scans) == 0:
-                    ave_diameter = float(self.smps_data[curr_line_index][1])
-                else:
-                    ave_diameter = hf.safe_div(sum_diameter, sum(count_by_scans))
-                for j in range(0, len(self.scans)):
-                    self.scans[j].add_to_raw_smps_counts(count_by_scans[j])
-                    self.scans[j].add_to_ave_smps_diameters(ave_diameter)
-                count_by_scans = [0] * len(self.scans)
-                sum_diameter = 0
-            curr_line_index += 1
-            if curr_line_index >= end_line_index:
-                break
-
-    def get_ccnc_counts(self):
-        """
-         Updates the scans objects via the following scan methods:
-
-         * :class:`~scan.Scan.set_status` Based on status of scan  # REVIEW - Add reasons to documentation
-         * :class:`~scan.Scan.set_status_code` Based on status of scan  # REVIEW - Add reasons to documentation
-         * :class:`~scan.Scan.add_to_raw_super_sats`  The supersaturation values
-         * :class:`~scan.Scan.add_to_raw_ccnc_counts`  The CCNC counts
-         * :class:`~scan.Scan.add_to_raw_ave_ccnc_sizes`  The average CCNC size
-         * :class:`~scan.Scan.add_to_raw_t1s_t2s_t3s`  The temperature values
-         """
-        first_bin_column_index = 25
-        bin_sizes = const.BIN_SIZES
-        # Get the first position of CCNC count in the ccnc file
-        curr_scan = 0
-        curr_scan_start_time = self.scans[curr_scan].start_time
-        # the index at which ccnc data is in sync with smps data
-        ccnc_index = 0
-        while True:
-            curr_ccnc_time = dt.datetime.strptime(self.ccnc_data[ccnc_index][0], "%H:%M:%S")
-            if curr_ccnc_time > curr_scan_start_time:
-                self.scans[curr_scan].set_status(0)
-                self.scans[curr_scan].set_status_code(1)  # RESEARCH 1 Status Code
-                curr_scan += 1
-                curr_scan_start_time = self.scans[curr_scan].start_time
-            elif curr_ccnc_time < curr_scan_start_time:
-                ccnc_index += 1
-            else:  # the current ccnc_index is where ccnc starts being in sync with smps
-                break
-        finish_scanning_ccnc_data = False
-        while not finish_scanning_ccnc_data:
-            finish_scanning_ccnc_data = False
-            a_scan = self.scans[curr_scan]
-            duration = a_scan.duration
-            # we do one thing at a time
-            for i in range(duration + duration // 4):  # DOCQUESTION Pull 125%? Okay paradigm?
-                curr_ccnc_index = ccnc_index + i
-                # if we reach out of ccnc data bound
-                if curr_ccnc_index >= len(self.ccnc_data):
-                    # stop scanning ccnc data
-                    finish_scanning_ccnc_data = True
-                    # if we did not collect enough data for a scan, then set its status to 0
-                    if i < duration:
-                        a_scan.set_status(0)
-                        a_scan.set_status_code(1)  # RESEARCH 1 Status Code
-                    break
-                # collect a bunch of data from ccnc file
-                supersaturation = self.ccnc_data[curr_ccnc_index][1]
-                a_scan.add_to_raw_super_sats(supersaturation)
-                ccnc_count = self.ccnc_data[curr_ccnc_index][-3]
-                ccnc_count_sum = int(sum([float(x) for x in self.ccnc_data[curr_ccnc_index][25:44]]))
-                ccnc_sample_flow = self.ccnc_data[curr_ccnc_index][17]
-                a_scan.add_to_raw_ccnc_counts(ccnc_count, ccnc_count_sum, ccnc_sample_flow)
-                total_count = 0
-                total_size = 0
-                for j in range(len(bin_sizes)):
-                    count_in_bin = int(float(self.ccnc_data[curr_ccnc_index][first_bin_column_index + j]))
-                    total_size += bin_sizes[j] * count_in_bin
-                    total_count += count_in_bin
-                ave_size = hf.safe_div(total_size, total_count)
-                a_scan.add_to_raw_ave_ccnc_sizes(ave_size)
-                a_scan.add_to_raw_t1s_t2s_t3s(self.ccnc_data[curr_ccnc_index][5], self.ccnc_data[curr_ccnc_index][7],
-                                              self.ccnc_data[curr_ccnc_index][9])
-            curr_scan += 1
-            # if we run of out scans to compare with ccnc data, stop scanning ccnc data
-            if curr_scan >= len(self.scans):
-                break
-            # find the next ccnc_index
-            # we got to based on the start time, since the duration values are always off
-            next_scan_start_time = self.scans[curr_scan].start_time
-            while True:
-                curr_ccnc_time = dt.datetime.strptime(self.ccnc_data[ccnc_index][0], "%H:%M:%S")
-                if curr_ccnc_time < next_scan_start_time:
-                    ccnc_index += 1
-                    # if we reach out of ccnc data bound
-                    if ccnc_index >= len(self.ccnc_data):
-                        # stop scanning ccnc data
-                        finish_scanning_ccnc_data = True
-                        break
-                else:
-                    break
-
     def do_basic_trans(self):
         """
         Perform basic transformation before aligning the smps and ccnc data.
@@ -660,21 +462,21 @@ class Controller(object):
     # Data Manipulation by the user  #
     ##################################
 
-    def set_kappa_point_state(self, ss, dp, state):
-        """
-        # REVIEW Documentation
-
-        :param ss:
-        :type ss:
-        :param dp:
-        :type dp:
-        :param state:
-        :type state:
-        """
-        # COMBAKL Kappa
-        self.valid_kappa_points[(dp, ss)] = state
-        self.calculate_average_kappa_values()
-        self.view.update_kappa_graph()
+    # def set_kappa_point_state(self, ss, dp, state):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param ss:
+    #     :type ss:
+    #     :param dp:
+    #     :type dp:
+    #     :param state:
+    #     :type state:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.valid_kappa_points[(dp, ss)] = state
+    #     self.calculate_average_kappa_values()
+    #     self.view.update_kappa_graph()
 
     #################
     # Updating view #
@@ -728,205 +530,207 @@ class Controller(object):
     # Get values #
     ##############
 
-    def get_project_name(self):
-        """
-        Takes the absolute project folder path and returns the last folder as the project name.
-
-        :return: The parent folder name
-        :rtype: str
-        """
-        return os.path.basename(self.project_folder)
+    # def get_project_name(self):
+    #     """
+    #     Takes the absolute project folder path and returns the last folder as the project name.
+    #
+    #     :return: The parent folder name
+    #     :rtype: str
+    #     """
+    #     return os.path.basename(self.project_folder)
 
     ##############
     # Set values #
     ##############
 
-    def set_save_name(self, name):
-        """
-        Sets the savename of the file
+    # def set_save_name(self, name):
+    #     """
+    #     Sets the savename of the file
+    #
+    #     :param str name: The name to save the file as
+    #     """
+    #     self.save_name = name
 
-        :param str name: The name to save the file as
-        """
-        self.save_name = name
+    ## Create Advanced Settings
 
-    def set_sigma(self, sigma):
-        """
-        # REVIEW Documentation
-
-        :param sigma:
-        :type sigma:
-        """
-        # COMBAKL Kappa
-        self.sigma = sigma
-
-    def set_temp(self, temp):
-        """
-        # REVIEW Documentation
-
-        :param temp:
-        :type temp:
-        """
-        # COMBAKL Kappa
-        self.temp = temp
-
-    def set_dd_1(self, dd_1):
-        """
-        # REVIEW Documentation
-
-        :param dd_1:
-        :type dd_1:
-        """
-        # COMBAKL Kappa
-        self.dd_1 = dd_1
-
-    def set_dd_2(self, dd_2):
-        """
-        # REVIEW Documentation
-
-        :param dd_2:
-        :type dd_2:
-        """
-        # COMBAKL Kappa
-        self.dd_2 = dd_2
-
-    def set_i_kappa_1(self, value):
-        """
-        # REVIEW Documentation
-
-        :param value:
-        :type value:
-        """
-        # COMBAKL Kappa
-        self.i_kappa_1 = value
-
-    def set_i_kappa_2(self, value):
-        """
-        # REVIEW Documentation
-
-        :param value:
-        :type value:
-        """
-        # COMBAKL Kappa
-        self.i_kappa_2 = value
-
-    def set_solubility(self, value):
-        """
-        # REVIEW Documentation
-
-        :param value:
-        :type value:
-        """
-        # COMBAKL Kappa
-        self.solubility = value
+    # def set_sigma(self, sigma):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param sigma:
+    #     :type sigma:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.sigma = sigma
+    #
+    # def set_temp(self, temp):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param temp:
+    #     :type temp:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.temp = temp
+    #
+    # def set_dd_1(self, dd_1):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param dd_1:
+    #     :type dd_1:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.dd_1 = dd_1
+    #
+    # def set_dd_2(self, dd_2):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param dd_2:
+    #     :type dd_2:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.dd_2 = dd_2
+    #
+    # def set_i_kappa_1(self, value):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param value:
+    #     :type value:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.i_kappa_1 = value
+    #
+    # def set_i_kappa_2(self, value):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param value:
+    #     :type value:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.i_kappa_2 = value
+    #
+    # def set_solubility(self, value):
+    #     """
+    #     # REVIEW Documentation
+    #
+    #     :param value:
+    #     :type value:
+    #     """
+    #     # COMBAKL Kappa
+    #     self.solubility = value
 
     #########################
     # Project Manipulations #
     #########################
 
-    def save_project(self):
-        """
-        Stores the following variables.
-
-        - self.scans
-        - self.counts_to_conc_conv
-        - self.data_files
-        - self.ccnc_data
-        - self.smps_data
-        - self.experiment_date
-        - self.base_shift_factor
-        - self.b_limits
-        - self.asym_limits
-        - self.kappa_calculate_dict
-        - self.alpha_pinene_dict
-        - self.stage
-        - self.valid_kappa_points
-        - self.save_name
-        """
-        # TODO issues/41 Fix to remove smooth_method
-        if self.save_name is None:
-            self.view.save_project_as()
-        else:
-            to_save = (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
-                       self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
-                       self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
-                       self.valid_kappa_points,
-                       self.save_name)
-            with open(self.save_name, 'wb') as handle:
-                pickle.dump(to_save, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    def load_project(self, project_file):
-        """
-        Begins a project with new project files
-
-        :param unicode project_file: The project file to reopen
-        """
-        # TODO issues/41 Fix to remove smooth_method
-        # RESEARCH Any other variables that need to be handled, cleared, etc?
-        # Get project folder
-        self.project_folder = os.path.dirname(project_file)
-        try:
-            with open(project_file, 'rb') as handle:
-                (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
-                 self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
-                 self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
-                 self.valid_kappa_points,
-                 self.save_name) = pickle.load(handle)
-        except Exception as e:
-            logger.warning("Old project/run file attempted to load (%s)" % e)
-            self.view.show_error_message("old project file")
-            return
-        # except TypeError as e:
-        #     if str(e) == "__init__() takes exactly 2 arguments (1 given)":
-        #         with open(project_file, 'rb') as handle:
-        #             (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
-        #              self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
-        #              self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
-        #              self.valid_kappa_points,
-        #              self.save_name) = hf.CustomUnpickler(handle).load()
-        # except ImportError as e:
-        #     if str(e) == "No module named Scan":
-        #         logger.warn("run import but no module named Scan - CustomUnpickler")
-        #         with open(project_file, 'rb') as handle:
-        #             (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
-        #              self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
-        #              self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
-        #              self.valid_kappa_points,
-        #              self.save_name) = hf.CustomUnpickler(handle).load()
-
-        # Set up the View
-        self.view.reset_view()
-        self.view.update_experiment_info()
-        self.view.set_menu_bar_by_stage()
-        self.switch_to_scan(0)
-        # if got to kappa, go straight to the kappa view
-        if self.stage == "kappa":
-            self.view.switch_to_kappa_view()
-            return
-        if self.stage == "sigmoid":
-            self.view.show_sigmoid_docker()
-        # QUESTION Show first valid scan or first scan?
-        self.switch_to_scan(0)
-
-    def export_project_data(self, export_filename):
-        """
-        Export the Kappa data to csv.
-
-        :param str export_filename: The file name to export the file to
-        """
-        # TODO issues/20 issues/21 issues/22 issues/11
-        data_to_export = []
-        # REVIEW kset use kappa dist
-        for a_key in list(self.kappa_calculate_dict.keys()):
-            a_scan = self.kappa_calculate_dict[a_key]
-            for aSS in a_scan:
-                # REVIEW kset use valid_kappa_points
-                if self.valid_kappa_points[(aSS[0], aSS[1], a_key, aSS[3])]:
-                    a_row = [a_key] + aSS[:-2] + ["Included point"]
-                else:
-                    a_row = [a_key] + aSS[:-2] + ["Excluded point"]
-                data_to_export.append(a_row)
-        df = pd.DataFrame(np.asarray(data_to_export),
-                          columns=["Supersaturation(%)", "Scan Index", "dp(nm)",
-                                   "K/app", "% activation", "Status"])
-        df.to_csv(export_filename, index=False)
-        self.view.show_information_message(title="Export Data", text="Export to " + export_filename + " successful!")
+    # def save_project(self):
+    #     """
+    #     Stores the following variables.
+    #
+    #     - self.scans
+    #     - self.counts_to_conc_conv
+    #     - self.data_files
+    #     - self.ccnc_data
+    #     - self.smps_data
+    #     - self.experiment_date
+    #     - self.base_shift_factor
+    #     - self.b_limits
+    #     - self.asym_limits
+    #     - self.kappa_calculate_dict
+    #     - self.alpha_pinene_dict
+    #     - self.stage
+    #     - self.valid_kappa_points
+    #     - self.save_name
+    #     """
+    #     # TODO issues/41 Fix to remove smooth_method
+    #     if self.save_name is None:
+    #         self.view.save_project_as()
+    #     else:
+    #         to_save = (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
+    #                    self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
+    #                    self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
+    #                    self.valid_kappa_points,
+    #                    self.save_name)
+    #         with open(self.save_name, 'wb') as handle:
+    #             pickle.dump(to_save, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #
+    # def load_project(self, project_file):
+    #     """
+    #     Begins a project with new project files
+    #
+    #     :param unicode project_file: The project file to reopen
+    #     """
+    #     # TODO issues/41 Fix to remove smooth_method
+    #     # RESEARCH Any other variables that need to be handled, cleared, etc?
+    #     # Get project folder
+    #     self.project_folder = os.path.dirname(project_file)
+    #     try:
+    #         with open(project_file, 'rb') as handle:
+    #             (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
+    #              self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
+    #              self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
+    #              self.valid_kappa_points,
+    #              self.save_name) = pickle.load(handle)
+    #     except Exception as e:
+    #         logger.warning("Old project/run file attempted to load (%s)" % e)
+    #         self.view.show_error_message("old project file")
+    #         return
+    #     # except TypeError as e:
+    #     #     if str(e) == "__init__() takes exactly 2 arguments (1 given)":
+    #     #         with open(project_file, 'rb') as handle:
+    #     #             (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
+    #     #              self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
+    #     #              self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
+    #     #              self.valid_kappa_points,
+    #     #              self.save_name) = hf.CustomUnpickler(handle).load()
+    #     # except ImportError as e:
+    #     #     if str(e) == "No module named Scan":
+    #     #         logger.warn("run import but no module named Scan - CustomUnpickler")
+    #     #         with open(project_file, 'rb') as handle:
+    #     #             (self.scans, self.counts_to_conc_conv, self.data_files, self.ccnc_data, self.smps_data,
+    #     #              self.experiment_date, self.smooth_method, self.base_shift_factor, self.b_limits,
+    #     #              self.asym_limits, self.kappa_calculate_dict, self.alpha_pinene_dict, self.stage,
+    #     #              self.valid_kappa_points,
+    #     #              self.save_name) = hf.CustomUnpickler(handle).load()
+    #
+    #     # Set up the View
+    #     self.view.reset_view()
+    #     self.view.update_experiment_info()
+    #     self.view.set_menu_bar_by_stage()
+    #     self.switch_to_scan(0)
+    #     # if got to kappa, go straight to the kappa view
+    #     if self.stage == "kappa":
+    #         self.view.switch_to_kappa_view()
+    #         return
+    #     if self.stage == "sigmoid":
+    #         self.view.show_sigmoid_docker()
+    #     # QUESTION Show first valid scan or first scan?
+    #     self.switch_to_scan(0)
+    #
+    # def export_project_data(self, export_filename):
+    #     """
+    #     Export the Kappa data to csv.
+    #
+    #     :param str export_filename: The file name to export the file to
+    #     """
+    #     # TODO issues/20 issues/21 issues/22 issues/11
+    #     data_to_export = []
+    #     # REVIEW kset use kappa dist
+    #     for a_key in list(self.kappa_calculate_dict.keys()):
+    #         a_scan = self.kappa_calculate_dict[a_key]
+    #         for aSS in a_scan:
+    #             # REVIEW kset use valid_kappa_points
+    #             if self.valid_kappa_points[(aSS[0], aSS[1], a_key, aSS[3])]:
+    #                 a_row = [a_key] + aSS[:-2] + ["Included point"]
+    #             else:
+    #                 a_row = [a_key] + aSS[:-2] + ["Excluded point"]
+    #             data_to_export.append(a_row)
+    #     df = pd.DataFrame(np.asarray(data_to_export),
+    #                       columns=["Supersaturation(%)", "Scan Index", "dp(nm)",
+    #                                "K/app", "% activation", "Status"])
+    #     df.to_csv(export_filename, index=False)
+    #     self.view.show_information_message(title="Export Data", text="Export to " + export_filename + " successful!")

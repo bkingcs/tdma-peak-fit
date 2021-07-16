@@ -40,18 +40,14 @@ class DockerScanInformation(Qw.QFrame):
         self.experiment_date = Qw.QLabel("-")
         self.experiment_date.setAlignment(Qc.Qt.AlignRight)
         form_layout.addRow("Date (m/d/y)", self.experiment_date)
-        # -- add smps duration
-        self.scan_duration = Qw.QLabel("-")  # TODO issues/5 Does not update when loading a project
-        self.scan_duration.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Scan duration(s)", self.scan_duration)
-        # -- add total numbe rof scan
-        self.num_scan = Qw.QLabel("-")
-        self.num_scan.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Number of scans", self.num_scan)
-        # -- add Counts2ConcConv
-        self.counts_2_conc_conv = Qw.QLabel("-")
-        self.counts_2_conc_conv.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Counts2ConcConv", self.counts_2_conc_conv)  # DOCQUESTION Convert to complete sentence
+        # -- add scan up time
+        self.scan_up_time = Qw.QLabel("-")
+        self.scan_up_time.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Scan Up Time (s)", self.scan_up_time)  # DOCQUESTION Convert to complete sentence
+        # -- add retrace time
+        self.retrace_time = Qw.QLabel("-")
+        self.retrace_time.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Retrace Time (s)", self.retrace_time)
         ########################################
         # Middle Section - Update Scan
         # -- add a title
@@ -81,29 +77,33 @@ class DockerScanInformation(Qw.QFrame):
         ########################################
         # Bottom Section - Scan Details
         # -- add a title
-        form_layout.addRow(c_widget.TitleHLine("Scan Details"))
-        # -- add the scan time
-        self.scan_time = Qw.QLabel("-")
-        self.scan_time.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Scan Time (h:m:s)", self.scan_time)
-        # -- add the supersaturation indicator
-        self.supersaturation = Qw.QLabel("-")
-        self.supersaturation.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Supersaturation (%)", self.supersaturation)
-        # -- add the activation indicator
-        self.activationpercent = Qw.QLabel("-%")
-        self.activationpercent.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Percent Activation", self.activationpercent)
-        # -- add the status of the scan
-        self.scan_status = Qw.QLabel("-")
-        self.scan_status.setAlignment(Qc.Qt.AlignRight)
-        form_layout.addRow("Scan status", self.scan_status)
-        # -- add the status of the scan
-        form_layout.addRow("Additional Info", None)
-        self.additional_information = Qw.QTextEdit("Welcome to Chemics!")
-        self.additional_information.setReadOnly(True)
-        self.additional_information.setAlignment(Qc.Qt.AlignLeft)
-        form_layout.addRow(self.additional_information)
+        form_layout.addRow(c_widget.TitleHLine("First DMA"))
+        # -- add the low voltage
+        self.low_voltage = Qw.QLabel("-")
+        self.low_voltage.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Low Voltage ", self.low_voltage)
+        # -- add the high voltage
+        self.status_flag = Qw.QLabel("-")
+        self.status_flag.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("High Voltage", self.status_flag)
+        # -- add the status flag
+        self.status_flag = Qw.QLabel("-")
+        self.status_flag.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Status Flag", self.status_flag)
+        # -- add the sheath flow
+        self.sheath_flow = Qw.QLabel("-")
+        self.sheath_flow.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Sheath Flow", self.sheath_flow)
+        # -- add the aerosol flow
+        self.aerosol_flow = Qw.QLabel("-")
+        self.aerosol_flow.setAlignment(Qc.Qt.AlignRight)
+        form_layout.addRow("Aerosol Flow", self.aerosol_flow)
+        ## -- add the status of the scan
+        # form_layout.addRow("Additional Info", None)
+        # self.additional_information = Qw.QTextEdit("Welcome to Chemics!")
+        # self.additional_information.setReadOnly(True)
+        # self.additional_information.setAlignment(Qc.Qt.AlignLeft)
+        # form_layout.addRow(self.additional_information)
         # set the layout
         self.setLayout(form_layout)
 
@@ -122,17 +122,17 @@ class DockerScanInformation(Qw.QFrame):
         self.scan_time.setText(scan_time)
         if not hasattr(curr_scan, "super_sat_label") or curr_scan.super_sat_label is None:
             curr_scan.super_sat_label = ', '.join(map(str, np.unique(curr_scan.processed_super_sats)))
-        self.supersaturation.setText(curr_scan.super_sat_label)
-        self.supersaturation.mousePressEvent = self.update_supersaturation
-        self.activationpercent.setText(str(curr_scan.get_activation()))
+        self.retrace_time.setText(curr_scan.super_sat_label)
+        self.retrace_time.mousePressEvent = self.update_supersaturation
+        self.low_voltage.setText(str(curr_scan.get_activation()))
         if curr_scan.is_valid():
-            self.scan_status.setText("VALID")
-            self.scan_status.setStyleSheet("QWidget { background-color:None}")
+            self.status_flag.setText("VALID")
+            self.status_flag.setStyleSheet("QWidget { background-color:None}")
             self.additional_information.setText("The scan shows no problem.")
             self.enable_disable_button.setText("Disable scan")
         else:
-            self.scan_status.setText("INVALID")
-            self.scan_status.setStyleSheet("QWidget { color: white; background-color:red}")
+            self.status_flag.setText("INVALID")
+            self.status_flag.setStyleSheet("QWidget { color: white; background-color:red}")
             self.additional_information.setText(curr_scan.get_status_code_descript())
             self.enable_disable_button.setText("Enable scan")
 
@@ -145,8 +145,8 @@ class DockerScanInformation(Qw.QFrame):
         # Update the values
         self.experiment_date.setText(self.controller.experiment_date)
         self.scan_duration.setText(str(self.controller.scan_duration))
-        self.num_scan.setText(str(len(self.controller.scans)))
-        self.counts_2_conc_conv.setText(str(self.controller.counts_to_conc_conv))
+        self.retrace_time.setText(str(len(self.controller.scans)))
+        self.scan_up_time.setText(str(self.controller.counts_to_conc_conv))
         # Set the Arrow Box ranges
         # DOCQUESTION Possible shift range correct?  [If dur=135, possible is -68-67]
         self.shift_selector.set_range(-self.controller.scans[0].duration // 2, self.controller.scans[0].duration // 2)
@@ -194,13 +194,13 @@ class DockerScanInformation(Qw.QFrame):
                 curr_scan.status = 1
                 curr_scan.set_status_code(0)
             if curr_scan.is_valid():
-                self.scan_status.setText("VALID")
-                self.scan_status.setStyleSheet("QWidget { background-color:None}")
+                self.status_flag.setText("VALID")
+                self.status_flag.setStyleSheet("QWidget { background-color:None}")
                 self.additional_information.setText(curr_scan.get_status_code_descript())
                 self.enable_disable_button.setText("Disable this scan")
             else:
-                self.scan_status.setText("INVALID")
-                self.scan_status.setStyleSheet("QWidget { color: white; background-color:red}")
+                self.status_flag.setText("INVALID")
+                self.status_flag.setStyleSheet("QWidget { color: white; background-color:red}")
                 self.additional_information.setText(curr_scan.get_status_code_descript())
                 self.enable_disable_button.setText("Enable this scan")
             self.controller.view.ratio_dp_graph.update_graph(curr_scan)
@@ -234,7 +234,7 @@ class DockerScanInformation(Qw.QFrame):
         if ss[1]:
             curr_scan.true_super_sat = float(ss[0])
             curr_scan.super_sat_label = str(ss[0])
-            self.supersaturation.setText(curr_scan.super_sat_label)
+            self.retrace_time.setText(curr_scan.super_sat_label)
 
 
 class DockerSigmoidWidget(Qw.QFrame):
