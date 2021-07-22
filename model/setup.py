@@ -36,8 +36,8 @@ class Setup:
 
         def __repr__(self):
             s = "DMA 1"
-            s += "\n  r_in: {:.3f}".format(self.radius_in_cm)
-            s += "\n  r_out: {:.3f}".format(self.radius_out_cm)
+            s += "\n  r_in_cm: {:.3f}".format(self.radius_in_cm)
+            s += "\n  r_out_cm: {:.3f}".format(self.radius_out_cm)
             s += "\n  length_cm: {:.3f}".format(self.length_cm)
             s += "\n"
             return s
@@ -70,12 +70,12 @@ class Setup:
         self.dma_1 = self.DMA()
 
         # NOTE - The downloaded file shows this as cm, but the numbers in the file are clearly m
-        self.dma_1.radius_in_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_IN,0])
-        self.dma_1.radius_out_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_OUT,0])
-        self.dma_1.length_cm = float(df_dma_1_info.iloc[ROW_DMA_LENGTH, 0])
-        # self.dma_1.radius_in_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_IN,0]) * 100
-        # self.dma_1.radius_out_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_OUT,0]) * 100
-        # self.dma_1.length_cm = float(df_dma_1_info.iloc[ROW_DMA_LENGTH, 0]) * 100
+        # self.dma_1.radius_in_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_IN,0])
+        # self.dma_1.radius_out_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_OUT,0])
+        # self.dma_1.length_cm = float(df_dma_1_info.iloc[ROW_DMA_LENGTH, 0])
+        self.dma_1.radius_in_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_IN,0]) * 100
+        self.dma_1.radius_out_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_OUT,0]) * 100
+        self.dma_1.length_cm = float(df_dma_1_info.iloc[ROW_DMA_LENGTH, 0]) * 100
 
         self.params = self.Params()
         self.params.mu_gas_viscosity_Pa_sec = float(df_dma_1_info.iloc[ROW_DMA_GAS_VISCOSITY])

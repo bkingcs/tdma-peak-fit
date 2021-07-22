@@ -16,13 +16,21 @@ from samples import Samples
 from sample import Sample
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
-# Columb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
+# Coulumb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
+# THEN, 1 Columb = 10^-1 statcoulumb, so multiply by 10
 #ELEM_CHARGE = 1.602e-19 * 1e5
+ELEM_CHARGE = 1.602e-19 * 1e5 * 1e1
+#ELEM_CHARGE = 1.602176634e-19 * 10e5
 
-# According to wikipedia, the following is the correct elementary
-# charge, converted to standard cm-g-sec space:
-ELEM_CHARGE = 4.80320425 * 1e-10
+# From wikipedia - proper value for cgs.... statcoulumbs?!?!
+#ELEM_CHARGE = 4.80320425e-10
 
+#TODO ERROR! Verify ELEM_CHARGE value. Something seems incorrect
+
+"""
+See the following for an example of what dp should be for certain dma values
+https://www.tandfonline.com/doi/full/10.1080/02786826.2019.1642443
+"""
 def lpm_to_cm3_per_sec(lpm):
     """
     Convert liters per minute to cubic cm per second
@@ -36,22 +44,46 @@ class DMA_1:
     """
     DMA_1 -
     """
-    def __init__(self, setup: Setup, samples: Samples):
+    def __init__(self, setup: Setup, samples: Samples, debug=False):
         self.setup = setup
         sample = samples.get_sample(0)
 
-        # sample.q_sh_lpm = 10
-        # sample.q_aIn_lpm = 1
-        # sample.q_aOut_lpm = 1
-        # sample.q_excess_lpm = 10
+        if debug:
+            # MF-DMA settings
+            # sample.q_sh_lpm = 25
+            # sample.q_aIn_lpm = 5
+            # sample.q_aOut_lpm = 5
+            # sample.q_excess_lpm = 25
+            # self.setup.dma_1.length_cm = 49.5 #Long
+            # self.setup.dma_1.radius_in_cm = 3.6
+            # self.setup.dma_1.radius_out_cm = 4.6
 
-        self.q_sh_cm3_sec = lpm_to_cm3_per_sec(sample.q_sh_lpm)
-        self.q_aIn_cm3_sec = lpm_to_cm3_per_sec(sample.q_aIn_lpm)
-        self.q_aOut_cm3_sec = lpm_to_cm3_per_sec(sample.q_aOut_lpm)
-        self.q_excess_cm3_sec = lpm_to_cm3_per_sec(sample.q_excess_lpm)
+            # TSI 3080
+            sample.q_sh_lpm = 10.0
+            sample.q_aIn_lpm = 1.0
+            sample.q_aOut_lpm = 1.0
+            sample.q_excess_lpm = 10.0
+            self.setup.dma_1.length_cm = 44.44
+            self.setup.dma_1.radius_in_cm = 0.937
+            self.setup.dma_1.radius_out_cm = 1.958
+
+            self.setup.params.mean_free_path_m = 68 * 1e-9
+            self.setup.params.mu_gas_viscosity_Pa_sec = 0.0001837 * 1e-1
+
+        # We're copying these over for simplicity purposes
+        self.q_sh_lpm = sample.q_sh_lpm
+        self.q_aIn_lpm = sample.q_aIn_lpm
+        self.q_aOut_lpm = sample.q_aOut_lpm
+        self.q_excess_lpm = sample.q_excess_lpm
+
+        # Create some internal private variables for computation purposes
+        self._q_sh_cm3_sec = lpm_to_cm3_per_sec(sample.q_sh_lpm)
+        self._q_aIn_cm3_sec = lpm_to_cm3_per_sec(sample.q_aIn_lpm)
+        self._q_aOut_cm3_sec = lpm_to_cm3_per_sec(sample.q_aOut_lpm)
+        self._q_excess_cm3_sec = lpm_to_cm3_per_sec(sample.q_excess_lpm)
 
         # 1 P = 10 Pa * s
-        self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 10
+        self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 1e1
 
         # We want nanometers from meters
         self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
@@ -65,11 +97,11 @@ class DMA_1:
         self.dp_right_bottom = None
 
     def __repr__(self):
-        s = "q_sh = {:.3f} cm3/sec\n".format(self.q_sh_cm3_sec)
-        s += "q_aIn = {:.3f} cm3/sec\n".format(self.q_aIn_cm3_sec)
-        s += "q_aOut = {:.3f} cm3/sec\n".format(self.q_aOut_cm3_sec)
-        s += "q_excess = {:.3f} cm3/sec\n".format(self.q_excess_cm3_sec)
-        s += "gas viscosity = {:.6f} Poise\n".format(self.mu_gas_viscosity_poise)
+        s = "q_sh = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_sh_lpm,self._q_sh_cm3_sec)
+        s += "q_aIn = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aIn_lpm,self.q_aIn_lpm)
+        s += "q_aOut = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aOut_lpm,self.q_aOut_lpm)
+        s += "q_excess = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_excess_lpm,self._q_excess_cm3_sec)
+        s += "gas viscosity = {:.7f} Poise\n".format(self.mu_gas_viscosity_poise)
         s += "mean free path = {:.3f} nm\n".format(self.mean_free_path_nm)
         if self.voltage:
             s += "Voltage = {:.1f} V\n".format(self.voltage)
@@ -79,6 +111,11 @@ class DMA_1:
                 s += "dp not computed\n"
         else:
             s += "No voltage set\n"
+        s += "WILL USE:\n"
+        s += "dma1 length: {:.3f} cm\n".format(self.setup.dma_1.length_cm)
+        s += "dma1 radius In {:.3f} cm\n".format(self.setup.dma_1.radius_in_cm)
+        s += "dma1 radius Out {:.3f} cm\n".format(self.setup.dma_1.radius_out_cm)
+
         return s
 
     def set_voltage(self,v: float):
@@ -138,8 +175,8 @@ class DMA_1:
         """
         delta_axial = (self.setup.dma_1.length_cm * self.voltage) / np.log(self.setup.dma_1.radius_out_cm/self.setup.dma_1.radius_in_cm)
         # delta_axial = (DMA_Length_cm * V) / np.log(Radius_outer_cm/Radius_inner_cm)
-        Zp_center  = (self.q_sh_cm3_sec + self.q_excess_cm3_sec) / (4 * math.pi * delta_axial)
-        Zp_fwhh    = (self.q_aIn_cm3_sec + self.q_aOut_cm3_sec) / (self.q_sh_cm3_sec + self.q_excess_cm3_sec) * Zp_center
+        Zp_center  = (self._q_sh_cm3_sec + self._q_excess_cm3_sec) / (4 * math.pi * delta_axial)
+        Zp_fwhh    = (self._q_aIn_cm3_sec + self._q_aOut_cm3_sec) / (self._q_sh_cm3_sec + self._q_excess_cm3_sec) * Zp_center
         return (Zp_center, Zp_fwhh)
 
     def _Zp_to_Dp(self,Zp,Cs,n_ch,verbose):
@@ -167,7 +204,9 @@ class DMA_1:
             :return:
             """
             dp = (n_ch * ELEM_CHARGE * Cs) / (3 * math.pi * self.mu_gas_viscosity_poise * Zp)
-            dp *= 1e7 # convert from cm to nm
+            #dp *= 1e7 # convert from cm to nm
+            #TODO ERROR! This is not the correct conversion!
+            dp *= 1e7 * 1e1
             return dp
 
         # For the time, we're going to iterate back and forth until we converge
@@ -184,9 +223,9 @@ class DMA_1:
             last_dp = dp
             dp = _compute_dp()
             if dp < MIN_DP_CHECK:
-                raise ValueError("Zp_to_dp: too small. Check input values")
-            if dp > MAX_DP_CHECK:
-                raise ValueError("Zp_to_dp: too large. Check input values")
+                raise ValueError("Zp_to_dp: {:.1f} too small. Check input values".format(dp))
+            if dp > MAX_DP_CHECK * 10:
+                raise ValueError("Zp_to_dp: {:.1f} too large. Check input values".format(dp))
             if math.fabs(last_dp - dp) < DELTA_DP:
                 break
             step_num += 1
@@ -196,6 +235,9 @@ class DMA_1:
             if verbose:
                 print("Cs (pass {}) = {}".format(step_num,Cs))
                 print("Dp (pass {}) = {}".format(step_num,dp))
+
+        if dp > MAX_DP_CHECK:
+            raise ValueError("Zp_to_dp: {:.1f} too large. Check input values".format(dp))
 
         return dp
 
