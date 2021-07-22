@@ -11,9 +11,9 @@ import seaborn as sns
 import math
 from matplotlib.ticker import FormatStrFormatter
 
-from Setup import Setup
-from Samples import Samples
-from Sample import Sample
+from setup import Setup
+from samples import Samples
+from sample import Sample
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
 # Columb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec

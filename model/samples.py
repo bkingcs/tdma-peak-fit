@@ -9,7 +9,7 @@ import scipy
 
 import matplotlib.pyplot as plt
 
-from Sample import Sample
+from sample import Sample
 
 class Samples:
     """
