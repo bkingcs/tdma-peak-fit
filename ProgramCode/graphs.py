@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 # Internal Packages
-import calculator as calculator
+import htdma_calculator as calculator
 # import data.klines
 # import helper_functions as hf
 from matplotlib.ticker import FormatStrFormatter
