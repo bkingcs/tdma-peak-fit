@@ -9,8 +9,8 @@ import PySide2.QtGui as Qg
 import PySide2.QtWidgets as Qw
 
 # Internal Packages
-import custom.modal_dialogs as c_modal_dialogs
-import custom.widget as c_widget
+import OLD.view.widgets.modal_dialogs as c_modal_dialogs
+import OLD.view.widgets.widget as c_widget
 
 
 class DockerScanInformation(Qw.QFrame):
@@ -78,11 +78,11 @@ class DockerScanInformation(Qw.QFrame):
         # Bottom Section - Scan Details
         # -- add a title
         form_layout.addRow(c_widget.TitleHLine("First DMA"))
-        # -- add the low voltage
+        # -- add the low voltage_lineedit
         self.low_voltage = Qw.QLabel("-")
         self.low_voltage.setAlignment(Qc.Qt.AlignRight)
         form_layout.addRow("Low Voltage ", self.low_voltage)
-        # -- add the high voltage
+        # -- add the high voltage_lineedit
         self.status_flag = Qw.QLabel("-")
         self.status_flag.setAlignment(Qc.Qt.AlignRight)
         form_layout.addRow("High Voltage", self.status_flag)
@@ -208,7 +208,7 @@ class DockerScanInformation(Qw.QFrame):
     def show_data(self):
         """
         Shows the dialog box which displays the scan's data to the user
-        (:class:`~custom.modal_dialogs.ScanDataDialog`)
+        (:class:`~widgets.modal_dialogs.ScanDataDialog`)
         """
         if len(self.controller.scans) != 0:
             a_scan = self.controller.scans[self.controller.curr_scan_index]
@@ -426,14 +426,14 @@ class DockerSigmoidWidget(Qw.QFrame):
         self.sigmoid_line_spinbox.set_value(self.num_sigmoid_lines)
         # Create new sigmoid parameters widgets
         params_group_box = Qw.QGroupBox("Parameter Set #" + str(self.num_sigmoid_lines))
-        sig_mid = c_widget.LabeledDoubleSpinbox("Sigmoid Midpoint")  # QUESTION Better label wording
+        sig_mid = c_widget.LabeledDoubleSpinbox("Sigmoid Midpoint")  # QUESTION Better echo_label wording
         sig_mid.set_maximum(maximum)
         sig_mid.set_value(np.exp(sigmoid_params[0]))
-        curve_max = c_widget.LabeledDoubleSpinbox("Curve Max")  # QUESTION Better label wording
+        curve_max = c_widget.LabeledDoubleSpinbox("Curve Max")  # QUESTION Better echo_label wording
         curve_max.set_maximum(maximum)
         curve_max.set_setsinglestep(0.01)
         curve_max.set_value(sigmoid_params[1])
-        log_grow_rate = c_widget.LabeledDoubleSpinbox("Curve Steepness")  # QUESTION Better label wording
+        log_grow_rate = c_widget.LabeledDoubleSpinbox("Curve Steepness")  # QUESTION Better echo_label wording
         log_grow_rate.set_maximum(maximum)
         log_grow_rate.set_value(sigmoid_params[2])
         # Create a widget for y_0 but do not display.  Needed for "apply"  # RESEARCH

@@ -65,7 +65,7 @@ class Sample:
         :param df: A data frame representing all row data for a single sample
         :param num_dp_values: number of dp values in the sample
         """
-        self.sample_num = int(df.columns[0])
+        self.sample_id_from_data = int(df.columns[0])
         self.time_stamp = df.iat[0,0]
 
         self.num_sample_rows = num_dp_values
@@ -171,7 +171,7 @@ class Sample:
         return y_filtered, y_sel_good
 
     def __repr__(self):
-        s = "sample #: {}\n".format(self.sample_num)
+        s = "sample #: {}\n".format(self.sample_id_from_data)
         s += "dp range: {}\n".format(repr(self.dp_range))
         s += "values: {}\n".format(repr(self.raw_values))
         s += "scan up (sec): {}\n".format(self.scan_up_time)
@@ -358,45 +358,53 @@ class Sample:
         return x
 
 
+    def plot(self, ax_data: plt.Axes, ax_residuals: plt.Axes):
+        """
+        Create a plot of the raw data and fitted data in ax_data,
+        and the residuals resulting from the fit in ax_residuals. If the user
+        does not want to plot residuals, OR if a fit has not been completed,
+        then the residuals are not plotted
 
-    def plot_fit(self):
+        :param ax_data: The Axes object to plot the data in
+        :param ax_residuals: The Axes object to plot the residuals in, or None
+        if no residuals are plotted.
         """
-        Create a plot of the raw data and fitted data
-        :return: Figure, Axes
-        """
-        fig = plt.figure(figsize=(10,8))
-        ax = fig.add_gridspec(4,1)
-        ax1 = fig.add_subplot(ax[0:3,0])
-        ax2 = fig.add_subplot(ax[3,0])
+
+        # fig = plt.figure(figsize=(10,8))
+        # ax = fig.add_gridspec(4,1)
+        # ax_data = fig.add_subplot(ax[0:3,0])
+        # ax_residuals = fig.add_subplot(ax[3,0])
 
         xdata = self.get_log_dp_range()
         ydata = self.get_values()
 
         # Plot actual data
-        ax1.plot(xdata,ydata, "ro")
+        ax_data.plot(xdata,ydata, "ro")
+        ax_data.set_ylabel("conc",family="serif",  fontsize=12)
+        ax_data.grid(True)
 
-        # Plot the curve fit
-        ax1.plot(xdata,self.fit_values, 'k--')
+        # Plot the curve fit... if a fit was completed
+        if self.fit_values:
+            ax_data.plot(xdata,self.fit_values, 'k--')
 
-        # Let's separate the peaks
-        for peak in range(self.fit_num_peaks):
-            gauss_params = self.fit_params[peak*3:(peak+1)*3]
-            gauss_fit = _1gaussian(xdata, *gauss_params)
-            color = "gbmcy"[peak]
-            ax1.plot(xdata,gauss_fit,color)
+            # Let's separate the peaks
+            for peak in range(self.fit_num_peaks):
+                gauss_params = self.fit_params[peak*3:(peak+1)*3]
+                gauss_fit = _1gaussian(xdata, *gauss_params)
+                color = "gbmcy"[peak]
+                ax_data.plot(xdata,gauss_fit,color)
 
-        #ax.set_xscale('log')
-        ax2.plot(xdata[self._y_sel_good], self.fit_residuals[self._y_sel_good], "bo")
-        ax2.plot(xdata[np.logical_not(self._y_sel_good)],
-                 self.fit_residuals[np.logical_not(self._y_sel_good)],
-                 "k.")
-        ax2.plot(xdata, np.zeros(xdata.shape[0]))
-        ax2.set_xlabel("log dp",family="serif",  fontsize=12)
-        ax1.set_ylabel("conc",family="serif",  fontsize=12)
-        ax2.set_ylabel("residuals")
+            #ax.set_xscale('log')
+            ax_residuals.plot(xdata[self._y_sel_good], self.fit_residuals[self._y_sel_good], "bo")
+            ax_residuals.plot(xdata[np.logical_not(self._y_sel_good)],
+                     self.fit_residuals[np.logical_not(self._y_sel_good)],
+                     "k.")
+            ax_residuals.plot(xdata, np.zeros(xdata.shape[0]))
+            ax_residuals.set_xlabel("log dp",family="serif",  fontsize=12)
+            ax_residuals.set_ylabel("residuals")
 
-        ax1.legend(loc="best")
+        ax_data.legend(loc="best")
 
-        fig.tight_layout()
-
-        return fig, ax
+        # fig.tight_layout()
+        #
+        # return fig, ax

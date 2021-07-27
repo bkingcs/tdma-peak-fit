@@ -2,76 +2,31 @@
 Initalizes and updates the graphs
 """
 # External Packages
-import math
-from io import StringIO
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 import numpy as np
-import pandas as pd
 
 # Internal Packages
-import htdma_calculator as calculator
 # import data.klines
 # import helper_functions as hf
-from matplotlib.ticker import FormatStrFormatter
-
+from code.model import DMA_1
 
 class FirstDMA(FigureCanvas):
     """
-    Plotting a graph to start creating plain graphs for when
-    the code comes in
+    Plot the graph that represents the first DMA theoretical distribution
     """
-    def __init__(self):
+    def __init__(self, dma1: DMA_1 = None):
         self.fig, self.ax = plt.subplots()
         super(self.__class__, self).__init__(self.fig)
 
         plt.style.use('seaborn-whitegrid')
 
-        # Set parameters
-        (dp, dp_left_bottom, dp_right_bottom) = self.calculate_parameters()
+        if dma1:
+            dma1.plot(self.fig, self.ax)
 
-        x = [dp_left_bottom, dp, dp_right_bottom]
-        y = [0, 1, 0]
-        # TODO - Fix the center height
-
-        self.ax.set_xscale('log')
-        self.ax.set_xlim(200, 1000)
-        self.ax.set_xticks(np.arange(200, 1000, 100))
-        self.ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-
-        # TODO - Set "Dp" for x axis label
-        self.ax.set_ylim(0, 1)
-
-        plt.title("DMA 1 theoretical distribution")
-        plt.plot(x, y)
-        plt.grid(True)
-
-    def calculate_parameters(self):
-        Q_sh = 10.0  # Sheath in flow rate
-        Q_aIn = 1.0  # Aerosol inlet flow (Polydisperse)
-        V = 10000.0  # Volts (allow 1-10000, anything else should be flagged)
-
-        IS_SYMMETRIC = True
-
-        # If user chooses asymmetric flows then these two need to appear as well, otherwise, they are matched as indicated:
-        if IS_SYMMETRIC:
-            Q_excess = Q_sh
-            Q_aOut = Q_aIn
-        else:
-            # User will need to enter these if in asymmetric mode
-            Q_excess = 10.0
-            Q_aOut = 1.0
-
-        (Zp, Zp_fwhh) = calculator.compute_Zp(Q_sh, Q_aIn, Q_excess, Q_aOut, V)
-
-        dp = calculator.Zp_to_Dp(Zp, Cs=2)
-        dp_left_bottom = calculator.Zp_to_Dp(Zp + Zp_fwhh)
-        dp_right_bottom = calculator.Zp_to_Dp(Zp - Zp_fwhh)
-
-        return dp, dp_left_bottom, dp_right_bottom
-
+    def update(self,dma1: DMA_1):
+        if dma1:
+            dma1.plot(self.fig, self.ax)
 
 class SecondGraph(FigureCanvas):
     """
@@ -177,9 +132,9 @@ class FourthGraph(FigureCanvas):
 #         self.header = self.klines_data.columns
 #         self.klines_diameters = self.klines_data[self.header[1]]
 #         # set up empty data lines
-#         self.valid_kappa_points, = self.ax.plot([], [], "o", label="Valid K-points")
-#         self.invalid_kappa_points, = self.ax.plot([], [], "x", label="Invalid K-points")
-#         self.average_kappa_points, = self.ax.plot([], [], "o", label="Average K-points")
+#         self.valid_kappa_points, = self.ax.plot([], [], "o", echo_label="Valid K-points")
+#         self.invalid_kappa_points, = self.ax.plot([], [], "x", echo_label="Invalid K-points")
+#         self.average_kappa_points, = self.ax.plot([], [], "o", echo_label="Average K-points")
 #         self.klines = []
 #
 #         annotation = self.ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
@@ -311,7 +266,7 @@ class FourthGraph(FigureCanvas):
 #         for i in range(kline_start_column, kline_end_column):
 #             y = self.klines_data[self.header[i]]
 #             self.klines.append(self.ax.loglog(self.klines_diameters, y,
-#                                               gid=str(self.header[i]), label=str(self.header[i]), linewidth=1)[0])
+#                                               gid=str(self.header[i]), echo_label=str(self.header[i]), linewidth=1)[0])
 #
 #         plt.subplots_adjust(right=0.8)
 #         plt.legend(loc="upper left", bbox_to_anchor=(1, 1))

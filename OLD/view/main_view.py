@@ -2,42 +2,18 @@
 The main entry point of the program
 """
 # External Packages
-import datetime
-import logging
-import os
-import PySide2.QtCore as Qc
+
+# GUI packages
+
 import PySide2.QtGui as Qg
 import PySide2.QtWidgets as Qw
-import sys
-import webbrowser
 
 # Internal Packages
-import controller
-import custom.central_widget as c_central_widget
-import custom.docker_widget as c_dock_widget
-import custom.modal_dialogs as c_modal_dialogs
-import graphs
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PySide2.QtGui import QKeySequence
 
-##############
-# Setup Code #
-##############
-
-# Determine if running in pyinstaller bundle or python environment
-#   Debugger
-#      If frozen, log to both black box and a log file
-#      If running in nomal environment, only display in console
-#   Test Environment
-#      If frozen, do not show any testing features
-#      If running in nomal environment, preset folders and allow exporting of data
-# if getattr(sys, 'frozen', False):  # we are running in a |PyInstaller| bundle
-#     logging_config.configure_logger_frz("Chemicslog-" + datetime.datetime.now().strftime("%Y-%m-%d--%H.%M") + ".log")
-#     isTest = False
-# else:  # we are running in a normal Python environment
-#     logging_config.configure_logger_env()
-#     isTest = True
-#
-# logger = logging.getLogger("main")
+from OLD.view.widgets import central_widget as c_central_widget
+from code.model import model as model
+import OLD.view.graphs
 
 ########
 # Main #
@@ -49,20 +25,26 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
     Initialzes the main window of the program.
     """
 
-    def __init__(self, main_app):
+    def __init__(self, main_app, model: model.Model):
         # Initalize the window
         Qw.QMainWindow.__init__(self)
+
         # Basic window settings
         self.setWindowTitle('HTDMA')
         self.font = Qg.QFont("Calibri")
-        main_app.setFont(self.font)
+        self.main_app = main_app
+        self.main_app.setFont(self.font)
+
+        self.model = model
+
         # Create the controller that handles all of the functionalities of the program
-        self.controller = controller.Controller(self)
+        # self.controller = controller.Controller(self,model)
+
         # Create graph objects
-        self.first_dma_graph = graphs.FirstDMA()
-        self.second_graph = graphs.SecondGraph()
-        self.third_graph = graphs.ThirdGraph()
-        self.fourth_graph = graphs.FourthGraph()
+        self.dma1_graph = OLD.view.graphs.FirstDMA(dma1=model.dma1)
+        self.second_graph = OLD.view.graphs.SecondGraph()
+        self.third_graph = OLD.view.graphs.ThirdGraph()
+        self.fourth_graph = OLD.view.graphs.FourthGraph()
 
 
         # Commenting out to use later
@@ -79,8 +61,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         # # create central widget
         [self.stacked_central_widget, self.central_widget_alignscan] = self.create_central_widget()
         # create menu bar
-        # self.file_menu, self.action_menu, self.window_menu = self.create_menus()
-        self.file_menu = self.action_menu = self.window_menu = Qw.QMenu("&Temp")
+        self.create_menus()
         self.set_menu_bar_by_stage()
 
         # Create toolbar, passing canvas as first parament, parent (self, the MainWindow) as second.
@@ -101,27 +82,34 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
     def create_menus(self):
         """
         Creates the menu bar for the main view
-
-        :returns:
             - **file_menu** - Qw.QMenu object that allows the user to open and save files and projects.
             - **action_menu** - Qw.QMenu object that allows the user to preform actions on the data
             - **window_menu** -  Qw.QMenu object that allows the user to turn windows on and off
             - **help_menu** - Qw.QMenu object that allows the user to access settings and help information
         """
-        # Add file menu
-        file_menu = Qw.QMenu("&File")
-        new_action = Qw.QAction('&New Project from Files...', self, shortcut="Ctrl+N", triggered=self.open_files)
-        open_action = Qw.QAction('&Open Existing Project...', self, triggered=self.open_project)
-        save_action = Qw.QAction('&Save Project', self, shortcut="Ctrl+S", triggered=self.save_project)
-        save_as_action = Qw.QAction('Save Project &As', self, triggered=self.save_project_as)
+        # Create a file menu
+        self.file_menu = Qw.QMenu("&File")
+
+        # Add items to File menu
+        self.new_action = Qw.QAction('&New Project from Files...', self)
+        self.new_action.setShortcut(QKeySequence.New)
+
+        # Add the individual actions to the file menu
+        self.file_menu.addAction(self.new_action)
+
+        # Add the file menu to the meny bar
+        self.menuBar().addMenu(self.file_menu)
+
+        # self.open_action = Qw.QAction('&Open Existing Project...', self, triggered=self.open_project)
+        # self.save_action = Qw.QAction('&Save Project', self, shortcut="Ctrl+S", triggered=self.save_project)
+        # self.save_as_action = Qw.QAction('Save Project &As', self, triggered=self.save_project_as)
         #export_data_action = Qw.QAction('Export &Kappa Data', self, triggered=self.export_project_data)
-        exit_action = Qw.QAction('&Exit', self, shortcut="Ctrl+E", triggered=self.closeEvent )
-        file_menu.addAction(new_action)
-        file_menu.addSeparator()
-        file_menu.addActions([open_action, save_action, save_as_action])
-        file_menu.addSeparator()
-        file_menu.addAction(exit_action)
-        self.menuBar().addMenu(file_menu)
+        # self.exit_action = Qw.QAction('&Exit', self, shortcut="Ctrl+E", triggered=self.closeEvent )
+        # file_menu.addSeparator()
+        # file_menu.addActions([open_action, save_action, save_as_action])
+        # file_menu.addSeparator()
+        # file_menu.addAction(exit_action)
+
 
         # Add action menu
         action_menu = Qw.QMenu("&Actions")
@@ -168,7 +156,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         #     export_scans = Qw.QAction('Export Scans', self, triggered=self.export_scans)
         #     test_menu.addAction(export_scans)
         self.menuBar().addMenu(test_menu)       # indent back into if statement when uncommented
-        return file_menu, action_menu, window_menu
+        return
 
     def set_menu_bar_by_stage(self):
         """
@@ -177,7 +165,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         # clear old menu
         self.menuBar().clear()
         # recreate menu
-        self.file_menu, self.action_menu, self.window_menu = self.create_menus()
+        self.create_menus()
         # disable by stage
         # if self.controller.stage == "init":
         #     # file menu
@@ -209,84 +197,6 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         #     pass
         # TODO Delete this once smoothing algo has been expanded
 
-    ##############
-    # MENU ITEMS #
-    ##############
-
-    # File menu items
-
-    def open_files(self):
-        # """
-        # Opens data files and begins the scan alignment process
-        # """
-        # if isTest:  # TEST
-        #     open_dir = "../../ChemicsTestData/Penn State 19 - Full Data Set/"
-        # else:
-        #     open_dir = ""
-        # # noinspection PyCallByClass
-        # files = Qw.QFileDialog.getOpenFileNames(self, "Open files", open_dir, "Data files (*.csv *.txt)")[0]
-        # if files:
-        #     # read in new files
-        #     self.controller.start(files)
-        #     self.setWindowTitle("Chemics: " + self.controller.get_project_name())
-        pass
-
-    def open_project(self):
-        # """
-        # Opens a previously saved project and load the information that was stored at the time.
-        #
-        # See :class:`~controller.Controller.save_project` in the Controller class.
-        # """
-        # if isTest:  # TEST
-        #     open_dir = "../../TestData/Saved Chemics Files"
-        # else:
-        #     open_dir = ""
-        # # noinspection PyCallByClass
-        # run_file = Qw.QFileDialog.getOpenFileName(self, "Open file", open_dir, "Project files (*.chemics)")[0]
-        # if run_file:
-        #     # read in new files
-        #     self.controller.load_project(run_file)
-        #     self.setWindowTitle("Chemics: " + self.controller.get_project_name())
-        pass
-
-    def save_project(self):
-        # """
-        # Saves the current open project to the disk
-        # """
-        # self.controller.save_project()
-        pass
-
-    def save_project_as(self):
-        # """
-        # Allows the user to select a save name and saves the current open project to the disk
-        # """
-        # # Get file name
-        # file_name = self.controller.project_folder + "/"
-        # file_name += self.controller.get_project_name() + ".chemics"
-        # # noinspection PyCallByClass
-        # project_file = Qw.QFileDialog.getSaveFileName(self, "Save file", file_name, "Project files (*.chemics)")[0]
-        # if project_file:
-        #     # append file extention if neccessary
-        #     if not project_file.endswith(".chemics"):
-        #         project_file += ".chemics"
-        #     # Save files
-        #     self.controller.set_save_name(project_file)
-        #     self.controller.save_project()
-        pass
-
-    def closeEvent(self, event: Qg.QCloseEvent):
-        """
-        Creating the event when force quitting wasn't used the window
-        """
-        # Setting up the reply question when clicking on the exit button
-        reply = Qw.QMessageBox.question(self, 'Message', 'Are you sure you want to quit?',
-                                        Qw.QMessageBox.Yes | Qw.QMessageBox.No, Qw.QMessageBox.No)
-
-        # Receives the response makes a decision
-        if reply == Qw.QMessageBox.Yes:
-            event.accept()
-        else:
-            event.ignore()
 
     def set_font(self, font, size):
         """
@@ -297,7 +207,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         """
         # noinspection PyUnresolvedReferences
         self.font = Qg.QFont(font.family(), size)
-        app.setFont(self.font)
+        self.main_app.setFont(self.font)
 
     ##############################
     # Create Widgets and Dockers #
@@ -321,11 +231,12 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         """
         # create left docker
         scaninfo_docker = Qw.QDockWidget("Scan &Information", self)
-        scan_docker_widget = c_dock_widget.DockerScanInformation(self.controller)
-        scaninfo_docker.setWidget(scan_docker_widget)
-        scaninfo_docker.setAllowedAreas(Qc.Qt.RightDockWidgetArea | Qc.Qt.LeftDockWidgetArea)
-        scaninfo_docker.setFeatures(Qw.QDockWidget.DockWidgetMovable | Qw.QDockWidget.DockWidgetClosable)
-        self.addDockWidget(Qc.Qt.LeftDockWidgetArea, scaninfo_docker)
+        # scan_docker_widget = c_dock_widget.DockerScanInformation(self.controller)
+        # scaninfo_docker.setWidget(scan_docker_widget)
+        # scaninfo_docker.setAllowedAreas(Qc.Qt.RightDockWidgetArea | Qc.Qt.LeftDockWidgetArea)
+        # scaninfo_docker.setFeatures(Qw.QDockWidget.DockWidgetMovable | Qw.QDockWidget.DockWidgetClosable)
+        # self.addDockWidget(Qc.Qt.LeftDockWidgetArea, scaninfo_docker)
+
         # create sigmoid docker
         # sigmoid_docker = Qw.QDockWidget("Sigmoid &Parameters", self)
         # sigmoid_docker_widget = c_dock_widget.DockerSigmoidWidget(self.controller)
@@ -374,18 +285,16 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         new_index = self.stacked_central_widget.count() - self.stacked_central_widget.currentIndex() - 1
         self.stacked_central_widget.setCurrentIndex(new_index)
 
+    def closeEvent(self, event):
+        """
+        This method is overriding the default method as defined in QMainWindow class
+        """
+        # Setting up the reply question when clicking on the exit button
+        reply = Qw.QMessageBox.question(self, 'Message', 'Are you sure you want to quit?',
+                                        Qw.QMessageBox.Yes | Qw.QMessageBox.No, Qw.QMessageBox.No)
 
-if __name__ == "__main__":
-    # setup debugger
-    # logger.info("=================================================")
-    # logger.info("=================================================")
-    # logger.debug("HTDMA started")
-    print("=================================================")
-    print("=================================================")
-    print("HTDMA started")
-
-    app = Qw.QApplication(sys.argv)
-    main_window = MainView(app)
-    main_window.show()
-
-    sys.exit(app.exec_())
+        # Receives the response makes a decision
+        if reply == Qw.QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()

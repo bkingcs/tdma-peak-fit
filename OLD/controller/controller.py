@@ -3,25 +3,23 @@ This class handles most of the programs actions.
 """
 # External Packages
 import datetime as dt
-from io import StringIO
 import logging
-import math
-import numpy as np
 import os
-import pandas as pd
-import pickle
-import re
 import time
+
+import PySide2.QtWidgets as Qw
 
 # Internal Packages
 # from algorithm import auto_shift
 # import constants as const
 # import helper_functions as hf
-import scan
+
+from code import main
+from code.model import model as model
+import OLD.view.main_view
 
 # Set logger for this module
 logger = logging.getLogger("controller")
-
 
 class Controller(object):
     """
@@ -61,8 +59,9 @@ class Controller(object):
     """
     # COMBAKL Sigmoid
     # COMBAKL Kappa
-    def __init__(self, view):
-        self.view = view
+    def __init__(self, main_view: OLD.view.main_view.MainView, the_model: model.Model):
+        self.the_model = the_model
+        self.the_view = main_view
         # Variables consistent across scans
         # self.scan_up_time = None
         # self.scan_down_time = None
@@ -98,6 +97,74 @@ class Controller(object):
         # self.valid_kappa_points = None
         # self.set_attributes_default()
         # self.smooth_method = None  # TODO issues/41
+
+        main_view.new_action.triggered.connect(self.open_files)
+
+    ##############
+    # MENU ITEMS #
+    ##############
+
+    def open_files(self):
+        # """
+        # Opens data files and begins the scan alignment process
+        # """
+        if main.isTest:  # TEST
+            open_dir = "./data"
+        else:
+            open_dir = ""
+        # noinspection PyCallByClass
+        files = Qw.QFileDialog.getOpenFileNames(self.the_view, "Open files", open_dir, "Data files (*.csv *.txt)")[0]
+        if files:
+            # read in the new file
+            self.the_model.process_new_file(files[0])
+
+            # Update the view
+            self.the_view.dma1_graph.update_from_setup_and_samples(self.the_model.dma1)
+            self.the_view.update()
+        pass
+
+    def open_project(self):
+        # """
+        # Opens a previously saved project and load the information that was stored at the time.
+        #
+        # See :class:`~controller.Controller.save_project` in the Controller class.
+        # """
+        # if isTest:  # TEST
+        #     open_dir = "../../TestData/Saved Chemics Files"
+        # else:
+        #     open_dir = ""
+        # # noinspection PyCallByClass
+        # run_file = Qw.QFileDialog.getOpenFileName(self, "Open file", open_dir, "Project files (*.chemics)")[0]
+        # if run_file:
+        #     # read in new files
+        #     self.controller.load_project(run_file)
+        #     self.setWindowTitle("Chemics: " + self.controller.get_project_name())
+        pass
+
+    def save_project(self):
+        # """
+        # Saves the current open project to the disk
+        # """
+        # self.controller.save_project()
+        pass
+
+    def save_project_as(self):
+        # """
+        # Allows the user to select a save name and saves the current open project to the disk
+        # """
+        # # Get file name
+        # file_name = self.controller.project_folder + "/"
+        # file_name += self.controller.get_project_name() + ".chemics"
+        # # noinspection PyCallByClass
+        # project_file = Qw.QFileDialog.getSaveFileName(self, "Save file", file_name, "Project files (*.chemics)")[0]
+        # if project_file:
+        #     # append file extention if neccessary
+        #     if not project_file.endswith(".chemics"):
+        #         project_file += ".chemics"
+        #     # Save files
+        #     self.controller.set_save_name(project_file)
+        #     self.controller.save_project()
+        pass
 
     ####################
     # Resetting Values #

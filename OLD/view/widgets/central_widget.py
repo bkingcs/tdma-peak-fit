@@ -6,8 +6,6 @@ import PySide2.QtCore as Qc
 import PySide2.QtWidgets as Qw
 
 # Internal Packages
-import custom.widget as c_widget
-import ProgramCode.graphs as graphs
 
 
 class CentralWidgetScans(Qw.QWidget):
@@ -20,19 +18,16 @@ class CentralWidgetScans(Qw.QWidget):
         super(self.__class__, self).__init__()
         # Create the widgets
         self.main_view = parent
-        self.first_dma_graph = graphs.FirstDMA()
-        self.second_graph = graphs.SecondGraph()
-        self.third_graph = graphs.ThirdGraph()
-        self.fourth_graph = graphs.FourthGraph()
 
-        self.first_dma_graph = self.main_view.first_dma_graph
+        # Let's grab the graph objects from the main view class
+        self.dma1_graph = self.main_view.dma1_graph
         self.second_graph = self.main_view.second_graph
         self.third_graph = self.main_view.third_graph
         self.fourth_graph = self.main_view.fourth_graph
 
         # Split the screen and add the widgets to the section
         self.h_splitter_1 = Qw.QSplitter(Qc.Qt.Horizontal)
-        self.h_splitter_1.addWidget(self.first_dma_graph)
+        self.h_splitter_1.addWidget(self.dma1_graph)
         self.h_splitter_1.addWidget(self.second_graph)
         self.h_splitter_2 = Qw.QSplitter(Qc.Qt.Horizontal)
         self.h_splitter_2.addWidget(self.third_graph)

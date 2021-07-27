@@ -4,16 +4,11 @@ dealing with generating the theoretical plot
 """
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy
-import pandas as pd
-import matplotlib as mpl
-import seaborn as sns
 import math
 from matplotlib.ticker import FormatStrFormatter
 
-from setup import Setup
-from samples import Samples
-from sample import Sample
+from code.model.setup import Setup
+from code.model.samples import Samples
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
 # Coulumb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
@@ -44,9 +39,10 @@ class DMA_1:
     """
     DMA_1 -
     """
-    def __init__(self, setup: Setup, samples: Samples, debug=False):
-        self.setup = setup
-        sample = samples.get_sample(0)
+    DEFAULT_VOLTAGE = 5000.0
+
+    def __init__(self, debug=False):
+        self.setup = Setup()
 
         if debug:
             # MF-DMA settings
@@ -59,28 +55,28 @@ class DMA_1:
             # self.setup.dma_1.radius_out_cm = 4.6
 
             # TSI 3080
-            sample.q_sh_lpm = 10.0
-            sample.q_aIn_lpm = 1.0
-            sample.q_aOut_lpm = 1.0
-            sample.q_excess_lpm = 10.0
+            self.q_sh_lpm = 10.0
+            self.q_aIn_lpm = 1.0
+            self.q_aOut_lpm = 1.0
+            self.q_excess_lpm = 10.0
+
+            # Enter values in setup since the rest grabs the values from there
             self.setup.dma_1.length_cm = 44.44
             self.setup.dma_1.radius_in_cm = 0.937
             self.setup.dma_1.radius_out_cm = 1.958
-
             self.setup.params.mean_free_path_m = 68 * 1e-9
             self.setup.params.mu_gas_viscosity_Pa_sec = 0.0001837 * 1e-1
-
-        # We're copying these over for simplicity purposes
-        self.q_sh_lpm = sample.q_sh_lpm
-        self.q_aIn_lpm = sample.q_aIn_lpm
-        self.q_aOut_lpm = sample.q_aOut_lpm
-        self.q_excess_lpm = sample.q_excess_lpm
+        else:
+            self.q_sh_lpm = 0.0
+            self.q_aIn_lpm = 0.0
+            self.q_aOut_lpm = 0.0
+            self.q_excess_lpm = 0.0
 
         # Create some internal private variables for computation purposes
-        self._q_sh_cm3_sec = lpm_to_cm3_per_sec(sample.q_sh_lpm)
-        self._q_aIn_cm3_sec = lpm_to_cm3_per_sec(sample.q_aIn_lpm)
-        self._q_aOut_cm3_sec = lpm_to_cm3_per_sec(sample.q_aOut_lpm)
-        self._q_excess_cm3_sec = lpm_to_cm3_per_sec(sample.q_excess_lpm)
+        self._q_sh_cm3_sec = lpm_to_cm3_per_sec(self.q_sh_lpm)
+        self._q_aIn_cm3_sec = lpm_to_cm3_per_sec(self.q_aIn_lpm)
+        self._q_aOut_cm3_sec = lpm_to_cm3_per_sec(self.q_aOut_lpm)
+        self._q_excess_cm3_sec = lpm_to_cm3_per_sec(self.q_excess_lpm)
 
         # 1 P = 10 Pa * s
         self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 1e1
@@ -89,18 +85,24 @@ class DMA_1:
         self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
 
         # Other parameters that need to be set by the user
-        self.voltage = None
+        self.voltage = self.DEFAULT_VOLTAGE
 
-        # dp distribution computed
+        # Initial cunningham slip correction
+        self.init_Cs = 2
+
+        # Initial number of charges
+        self.n_ch = 1
+
+        # dp distribution to be computed
         self.dp_center = None
         self.dp_left_bottom = None
         self.dp_right_bottom = None
 
     def __repr__(self):
-        s = "q_sh = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_sh_lpm,self._q_sh_cm3_sec)
-        s += "q_aIn = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aIn_lpm,self.q_aIn_lpm)
-        s += "q_aOut = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aOut_lpm,self.q_aOut_lpm)
-        s += "q_excess = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_excess_lpm,self._q_excess_cm3_sec)
+        s = "q_sh_lineedit = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_sh_lpm,self._q_sh_cm3_sec)
+        s += "q_aIn_lineedit = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aIn_lpm,self.q_aIn_lpm)
+        s += "q_aOut_lineedit = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_aOut_lpm,self.q_aOut_lpm)
+        s += "q_excess_lineedit = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_excess_lpm,self._q_excess_cm3_sec)
         s += "gas viscosity = {:.7f} Poise\n".format(self.mu_gas_viscosity_poise)
         s += "mean free path = {:.3f} nm\n".format(self.mean_free_path_nm)
         if self.voltage:
@@ -110,7 +112,7 @@ class DMA_1:
             else:
                 s += "dp not computed\n"
         else:
-            s += "No voltage set\n"
+            s += "No voltage_lineedit set\n"
         s += "WILL USE:\n"
         s += "dma1 length: {:.3f} cm\n".format(self.setup.dma_1.length_cm)
         s += "dma1 radius In {:.3f} cm\n".format(self.setup.dma_1.radius_in_cm)
@@ -118,27 +120,62 @@ class DMA_1:
 
         return s
 
-    def set_voltage(self,v: float):
+    def update_from_setup_and_samples(self, setup: Setup, samples: Samples):
+        self.setup = setup
+        sample = samples.get_sample(0)
+
+        # We're copying these over for simplicity purposes
+        self.q_sh_lpm = sample.q_sh_lpm
+        self.q_aIn_lpm = sample.q_aIn_lpm
+        self.q_aOut_lpm = sample.q_aOut_lpm
+        self.q_excess_lpm = sample.q_excess_lpm
+
+        # Create some internal private variables for computation purposes
+        self._q_sh_cm3_sec = lpm_to_cm3_per_sec(self.q_sh_lpm)
+        self._q_aIn_cm3_sec = lpm_to_cm3_per_sec(self.q_aIn_lpm)
+        self._q_aOut_cm3_sec = lpm_to_cm3_per_sec(self.q_aOut_lpm)
+        self._q_excess_cm3_sec = lpm_to_cm3_per_sec(self.q_excess_lpm)
+
+        # 1 P = 10 Pa * s
+        self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 1e1
+
+        # We want nanometers from meters
+        self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
+
+        # dp distribution is computed
+        self.compute_theoretical_dist()
+        # self.dp_center = None
+        # self.dp_left_bottom = None
+        # self.dp_right_bottom = None
+
+
+    def update_voltage(self, v: float):
         """
-        Set or update the voltage used to compute a new dp value
+        Set or update the voltage_lineedit used to compute a new dp value
         :param v:
         :return:
         """
         if v != self.voltage:
             self.voltage = v
-            self.dp_center = None
-            self.dp_left_bottom = None
-            self.dp_right_bottom = None
+            if self.q_aIn_lpm > 0 and self.q_sh_lpm > 0:
+                self.compute_theoretical_dist()
+            else:
+                self.dp_center = None
+                self.dp_left_bottom = None
+                self.dp_right_bottom = None
 
-    def compute_theoretical_dist(self,init_Cs=2,n_ch=1,verbose=False):
+    def compute_theoretical_dist(self,verbose=False):
         """
         Compute the theoretical distribution of DMA 1 based on parameters encapsulated
         inside this object. This includes computing the center dp value, and the full width
         half height values.
 
-        :param init_Cs: The initial value of Cunningham slip specified. For most
+        This function expects that the init_Cs and n_ch values have been set correctly
+        before calling.
+        * init_Cs: The initial value of Cunningham slip specified. For most
         problems the default of 2 is acceptable
-        :param n_ch:    number of elementary charges on particle
+        * n_ch:    number of elementary charges on particle
+
         :param verbose: Debug output
 
         :return: Nothing. All values computed are stored in the object
@@ -151,10 +188,10 @@ class DMA_1:
         if verbose:
             print("Zp = {}, Zp_fwhh = {}".format(Zp, Zp_fwhh))
 
-        Cs = init_Cs  # Initial value for Cs
+        Cs = self.init_Cs  # Initial value for Cs
 
         # Now, compute the corresponding dp
-        self.dp_center = self._Zp_to_Dp(Zp, Cs=init_Cs,n_ch=n_ch,verbose=verbose)
+        self.dp_center = self._Zp_to_Dp(Zp, Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
 
         if verbose:
             print("Dp (init value of Cs = 2) = {}".format(self.dp_center))
@@ -162,8 +199,8 @@ class DMA_1:
         # Compute the bottom points for the triangle. NOTE - electrical mobility
         # and dp have an inverse relationship. Thus, we are flipping these (i.e.
         # adding to the center to get the left, vice versa for right)
-        self.dp_left_bottom = self._Zp_to_Dp(Zp+Zp_fwhh,Cs=init_Cs,n_ch=n_ch,verbose=verbose)
-        self.dp_right_bottom = self._Zp_to_Dp(Zp-Zp_fwhh,Cs=init_Cs,n_ch=n_ch,verbose=verbose)
+        self.dp_left_bottom = self._Zp_to_Dp(Zp+Zp_fwhh,Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
+        self.dp_right_bottom = self._Zp_to_Dp(Zp-Zp_fwhh,Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
 
     def _compute_Zp(self):
         """
@@ -257,19 +294,19 @@ class DMA_1:
         is thrown
         """
         if not self.dp_center:
-            raise ValueError("ERROR - dp not computed yet, or voltage changed without computing new dp")
+            raise ValueError("ERROR - dp not computed yet, or voltage_lineedit changed without computing new dp")
         return self.dp_center
 
-    def plot(self):
+    def plot(self, ax: plt.Axes):
         """
         Create the distribution plot for DMA 1
 
-        :param ax:
-        :return: Figure, Axes
+        :param ax: The Axes object to plot on
+
         """
-        fig = plt.figure(figsize=(8, 6))
-        ax = plt.axes()
-        plt.style.use('seaborn-whitegrid')
+        # fig = plt.figure(figsize=(8, 6))
+        # ax = plt.axes()
+        # plt.style.use('seaborn-whitegrid')
 
         x = [self.dp_left_bottom, self.dp_center, self.dp_right_bottom]
         y = [0, 1, 0]
@@ -277,16 +314,32 @@ class DMA_1:
         # TODO - Fix the center height
 
         ax.set_xscale('log')
-        ax.set_xlim(200, 1000)
-        ax.set_xticks(np.arange(200, 1000, 100))
+        if self.dp_center:
+            x_min = self.dp_center // 100 * 100 - 100
+            if x_min <= 0:
+                x_min = 5
+            x_max = self.dp_center // 100 * 100 + 200
+        else:
+            # Default values if dp has not been calculated
+            x_min = 300
+            x_max = 1000
+
+        if x_min > 300:
+            x_min = 300
+
+        if x_min >= 100:
+            x_ticks = 100
+        else:
+            x_ticks = 10
+
+        ax.set_xlim(x_min, x_max)
+        ax.set_xticks(np.arange(x_min, x_max, x_ticks))
         ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 
-        # TODO - Set "Dp" for x axis label
+        # TODO - Set "Dp" for x axis echo_label
         ax.set_ylim(0, 1)
+        ax.set_title("DMA 1 theoretical distribution")
+        ax.plot(x, y)
+        ax.grid(True)
 
-        plt.title("DMA 1 theoretical distribution")
-        plt.plot(x, y)
-        plt.grid(True)
-
-        return fig, ax
 
