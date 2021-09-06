@@ -22,6 +22,9 @@ class Controller:
         self.main_view.prev_scan_button.clicked.connect(self.prev_scan_button_clicked)
         self.main_view.next_scan_button.clicked.connect(self.next_scan_button_clicked)
 
+        # Peak fitting
+        self.main_view.peak_fit_button.clicked.connect(self.peak_fit_button_clicked)
+
     def menu_file_open_action(self):
         # """
         # Opens data files and begins the scan alignment process
@@ -58,7 +61,7 @@ class Controller:
         self.main_view.update_dma1_widget_views_from_model()
 
     def prev_scan_button_clicked(self):
-        if not self.model.current_sample:
+        if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
         elif not self.model.select_prev_sample_num():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
@@ -66,10 +69,16 @@ class Controller:
             self.main_view.update_scan_widget_views_from_model()
 
     def next_scan_button_clicked(self):
-        if not self.model.current_sample:
+        if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
-        elif not self.model.select_next_sample_num():
+        elif not self.model.select_next_scan_num():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
             self.main_view.update_scan_widget_views_from_model()
 
+    def peak_fit_button_clicked(self):
+        if not self.model.current_scan:
+            Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
+        else:
+            self.model.current_scan.fit(num_peaks=self.main_view.scan_fit_num_peaks_spinbox.value())
+            self.main_view.update_scan_widget_views_from_model()

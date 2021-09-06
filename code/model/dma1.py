@@ -8,7 +8,7 @@ import math
 from matplotlib.ticker import FormatStrFormatter
 
 from code.model.setup import Setup
-from code.model.samples import Samples
+from code.model.run import RunOfScans
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
 # Coulumb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
@@ -120,15 +120,15 @@ class DMA_1:
 
         return s
 
-    def update_from_setup_and_samples(self, setup: Setup, samples: Samples):
+    def update_from_setup_and_run(self, setup: Setup, run_of_scans: RunOfScans):
         self.setup = setup
-        sample = samples.get_sample(0)
+        scan = run_of_scans.get_scan(0)
 
         # We're copying these over for simplicity purposes
-        self.q_sh_lpm = sample.q_sh_lpm
-        self.q_aIn_lpm = sample.q_aIn_lpm
-        self.q_aOut_lpm = sample.q_aOut_lpm
-        self.q_excess_lpm = sample.q_excess_lpm
+        self.q_sh_lpm = scan.q_sh_lpm
+        self.q_aIn_lpm = scan.q_aIn_lpm
+        self.q_aOut_lpm = scan.q_aOut_lpm
+        self.q_excess_lpm = scan.q_excess_lpm
 
         # Create some internal private variables for computation purposes
         self._q_sh_cm3_sec = lpm_to_cm3_per_sec(self.q_sh_lpm)
@@ -143,7 +143,7 @@ class DMA_1:
         self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
 
         # dp distribution is computed
-        self.compute_theoretical_dist()
+        self._compute_theoretical_dist()
         # self.dp_center = None
         # self.dp_left_bottom = None
         # self.dp_right_bottom = None
@@ -158,13 +158,13 @@ class DMA_1:
         if v != self.voltage:
             self.voltage = v
             if self.q_aIn_lpm > 0 and self.q_sh_lpm > 0:
-                self.compute_theoretical_dist()
+                self._compute_theoretical_dist()
             else:
                 self.dp_center = None
                 self.dp_left_bottom = None
                 self.dp_right_bottom = None
 
-    def compute_theoretical_dist(self,verbose=False):
+    def _compute_theoretical_dist(self, verbose=False):
         """
         Compute the theoretical distribution of DMA 1 based on parameters encapsulated
         inside this object. This includes computing the center dp value, and the full width
@@ -304,9 +304,6 @@ class DMA_1:
         :param ax: The Axes object to plot on
 
         """
-        # fig = plt.figure(figsize=(8, 6))
-        # ax = plt.axes()
-        # plt.style.use('seaborn-whitegrid')
 
         x = [self.dp_left_bottom, self.dp_center, self.dp_right_bottom]
         y = [0, 1, 0]

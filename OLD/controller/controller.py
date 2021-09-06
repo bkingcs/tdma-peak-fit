@@ -119,7 +119,7 @@ class Controller(object):
             self.the_model.process_new_file(files[0])
 
             # Update the view
-            self.the_view.dma1_graph.update_from_setup_and_samples(self.the_model.dma1)
+            self.the_view.dma1_graph.update_from_setup_and_run(self.the_model.dma1)
             self.the_view.update()
         pass
 

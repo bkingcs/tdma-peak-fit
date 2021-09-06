@@ -1,434 +1,440 @@
 """
-This class creates a scan object stores the data from a single scan.
+This class represents a single Scan from a run
+
+
+
+Let's recall the standard normal distribution as defined by the quintessential probability density function:
+- https://en.wikipedia.org/wiki/Normal_distribution
+
+- $f(x) = \frac{1}{\sigma \sqrt{2 \pi}}e^{-\frac{1}{2}(\frac{x - \mu}{\sigma})^2}$
+
+I'm following lots of ideas online of basic gaussian curve fits
+
+- http://www.emilygraceripka.com/blog/16
+
 """
-# External Packages
-import logging
+
 import numpy as np
-import scipy.stats
+import pandas as pd
+from statsmodels.stats.stattools import durbin_watson
+import scipy
 
-# Internal Packages
-# from algorithm import sigmoid_fit
-# import constants as const
-# import fast_dp_calculator as fast_dp_calculator
-# import helper_functions as hf
+import matplotlib.pyplot as plt
 
-# Set logger for this module
-logger = logging.getLogger("scan")
+##### Our fit functions
+
+def _1gaussian(x, amp1,mu1,sigma1):
+    return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-mu1)/sigma1)**2)))
+
+def _2gaussian(x, amp1, mu1, sigma1, amp2, mu2, sigma2):
+    return _1gaussian(x,amp1,mu1,sigma1) + _1gaussian(x,amp2,mu2,sigma2)
+        # return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-mu1)/sigma1)**2))) +  \
+        #        amp2*(1/(sigma2*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-mu2)/sigma2)**2)))
+
+def _3gaussian(x, amp1, mu1, sigma1, amp2, mu2, sigma2, amp3, mu3, sigma3):
+    return _1gaussian(x,amp1,mu1,sigma1) + \
+           _1gaussian(x,amp2,mu2,sigma2) + \
+           _1gaussian(x,amp3,mu3,sigma3)
+
+def _4gaussian(x, amp1, mu1, sigma1, amp2, mu2, sigma2, amp3, mu3, sigma3, amp4, mu4, sigma4):
+    return _1gaussian(x,amp1,mu1,sigma1) + \
+           _1gaussian(x,amp2,mu2,sigma2) + \
+           _1gaussian(x,amp3,mu3,sigma3) + \
+           _1gaussian(x,amp4,mu4,sigma4)
+
+def _5gaussian(x, amp1, mu1, sigma1, amp2, mu2, sigma2, amp3, mu3, sigma3, amp4, mu4, sigma4, amp5, mu5, sigma5):
+    return _1gaussian(x,amp1,mu1,sigma1) + \
+           _1gaussian(x,amp2,mu2,sigma2) + \
+           _1gaussian(x,amp3,mu3,sigma3) + \
+           _1gaussian(x,amp4,mu4,sigma4) + \
+           _1gaussian(x,amp5,mu5,sigma5)
+
+# fit_functions - this is the array of possible functions to fit the data to, depending on the
+# number of peaks specified in the data
+fit_functions = [_1gaussian,
+                 _2gaussian,
+                 _3gaussian,
+                 _4gaussian,
+                 _5gaussian]
+
+# Constants
+MAX_PEAKS_TO_FIT = 5
+MIN_GOOD_WINDOW_SIZE = 5
+NUM_FIT_PASSES = 6
 
 
-class Scan(object):
+class Scan:
     """
-    This class creates a scan object stores the data from a single scan.
-
-    Raw: Original Data
-    Processed: Data after shifts are processed
-    Corrected: Data after charge corrections
-    Cleaned: Data after sigmoid cleaning
-
-    The following variables are stored:  # RESEARCH Confirm variable descriptions
-
-        - **status**: status of the scan
-        - **status_code**: The reason why the scan is not good
-        - **counts_to_conc**: the flow rate
-        - **index**: the scan #
-        - **start_time**: what time the scan starts. Format is hh:mm:ss
-        - **end_time**: what time the scan ends. Format is hh:mm:ss
-        - **duration**: duration of the scan
-        - **scan_up_time**: up and down scan time. Very useful to align the data
-        - **scan_down_time**:
-        - etc... # REVIEW Documentation
-
-    :param int index: The scan number from the SMPS file.  # TODO issues/4 [Current is sequential #s from zero]
-
+    Scan encapsulates a single scan of data and its parameters
     """
+    def __init__(self, df: pd.DataFrame, num_dp_values: int):
+        """
+        This function is passed a single scan column from the time
+        stamp right through the end of the column
 
-    def __init__(self, index):
-        # TODO issues/45 combine status and code into one
-        # DOCQUESTION / RESEARCH duration = scan_up_time + scan_down_time; end time is start_time+duration. Neccessary?
-        # Controller#start.create_scans()
-        self.version = "2.2.5"
-        self.status = 1
-        self.status_code = 0
-        self.sigmoid_status = None
-        self.counts_to_conc = 0.0
-        self.cpc_sample_flow = 0.05
-        self.index = index
-        self.start_time = None
-        self.end_time = None
-        self.duration = 0
-        self.scan_up_time = 0
-        self.scan_down_time = 0
+        :param df: A data frame representing all row data for a single scan
+        :param num_dp_values: number of dp values in the scan
+        """
+        self.scan_id_from_data = int(df.columns[0])
+        self.time_stamp = df.iat[0,0]
 
-        # Scan#align_smps_ccnc_data
-        self.shift_factor = 0
+        self.num_scan_rows = num_dp_values
 
-        # RESEARCH Following variables for continued use
-        # TODO issues/10
-        # Controller#auto_fit_sigmoid
-        self.sig_df = ""  # TODO issues/64  Will be unneccessary after dataframe switch
-        self.sig_peaks_indices = []
-        self.sig_selection = []
-        self.sigmoid_params = []
-        self.dp50 = []
-        self.sigmoid_curve_x = []
-        self.sigmoid_curve_y = []
+        # Let's keep an internal dataframe of the data, for now...
+        self._df_data = df.iloc[1:1+self.num_scan_rows, [0]].copy()
+        self._df_data.index = self._df_data.index.astype(float)
+        self._df_data = self._df_data.astype(float)
 
-        self.asym_limits = [0.75, 1.5]  # RESEARCH Magic number  RESEARCH get from controller?
+        # Extract out numpy arrays of the data for speed
+        self.dp_range = self._df_data.index.to_numpy()
+        self.log_dp_range = np.log(self.dp_range)
+        self.raw_values = self._df_data.iloc[:,0].to_numpy()
+
+        # Extract out the other parameters
+        self.scan_up_time = float(df.iat[self.num_scan_rows + 1, 0])
+        self.scan_down_time = float(df.iat[self.num_scan_rows + 2, 0])
+        self.q_sh_lpm = float(df.iat[self.num_scan_rows + 6, 0])
+        self.q_aIn_lpm = float(df.iat[self.num_scan_rows + 7, 0])
+        self.q_aOut_lpm = float(df.iat[self.num_scan_rows + 8, 0])
+        self.low_V = float(df.iat[self.num_scan_rows + 10, 0])
+        self.high_V = float(df.iat[self.num_scan_rows + 11, 0])
+        self.status = df.iat[self.num_scan_rows + 16, 0]
+
+        # Validate the setup. Check whether the setup is symmetric or not
+        self.is_symmetric = True
+        self.q_excess_lpm = self.q_sh_lpm
+        if self.q_aIn_lpm != self.q_aOut_lpm:
+            self.is_symmetric = False
+            self.q_excess_lpm = self.q_sh_lpm + self.q_aIn_lpm - self.q_aOut_lpm
+
+        # Preprocess / clean data to prepare for curve fit
+        self._y_filtered, self._y_sel_good = self._filter_bad_values()
+        self._yfit = None
+        self._y_weights = None
+
+        # Parameters that are set by the fit function
+        self.fit_params = None      # Model parameters found by curve fit
+        self.fit_values = None      # Fitted values
+        self.fit_residuals = None   # Residuals between fit and raw values
+        self.fit_rmse = None        # RMSE
+        self.fit_num_peaks = None   # The number of peaks identified for best fit
+
+    def _filter_bad_values(self):
+        """
+        Internal helper function to identify points that should NOT be used in the
+        curve fit
+
+        #1) If < MIN_GOOD_WINDOW_SIZE sequential points are surrounded by 0 values, flatten them
+        #2) Ignore the first and last channel values
+
+        :return: The fitlered values, and the boolean selection array indicating
+        where the values are good
+        """
+
+        # Start with selecting all data
+        y_sel_good = np.array([True for i in range(self.raw_values.shape[0])])
+
+        # We know off the bat that we can eliminate the first and last channel values
+        y_sel_good[0] = False
+        y_sel_good[-1] = False
+
+        # Now, carefully iterate through the ordered data. Look for small windows surrounded by zero values.
+        # These should be eliminated
+        is_in_good_window = False
+        count_good_channels = 0
+        i_good_channel_start = None
+        for i in range(1,self.raw_values.shape[0]-1):
+            # Is this a good channel?
+            if self.raw_values[i] > 0:
+                # Were we in a good window? Then keep counting it..
+                if is_in_good_window:
+                    count_good_channels += 1
+
+                # We were NOT in a good window, so start one!
+                else:
+                    is_in_good_window = True
+                    i_good_channel_start = i
+                    count_good_channels = 1
+
+            # DOH! This is a shit channel. If we had a small window, flatten the data
+            else:
+                # Did we have a streak of good channels?
+                if is_in_good_window:
+                    # Was our window of good channels too small to count it?
+                    if count_good_channels < MIN_GOOD_WINDOW_SIZE:
+                        # Yes? Then eliminate these points
+                        for j in range(i_good_channel_start,i):
+                            y_sel_good[j] = False
+                    count_good_channels = 0
+                    is_in_good_window = False
+                y_sel_good[i] = False
+
+        # We're done! Flatten the bad channels
+        y_filtered = np.copy(self.raw_values)
+        y_filtered[np.logical_not(y_sel_good)] = 0.0
+
+        # Return the filtered data, and the selection array indicating where the good values are
+        return y_filtered, y_sel_good
 
     def __repr__(self):
+        s = "scan #: {}\n".format(self.scan_id_from_data)
+        s += "dp range: {}\n".format(repr(self.dp_range))
+        s += "values: {}\n".format(repr(self.raw_values))
+        s += "scan up (sec): {}\n".format(self.scan_up_time)
+        s += "scan down (sec): {}\n".format(self.scan_down_time)
+        s += "low V: {}\n".format(self.low_V)
+        s += "high V: {}\n".format(self.high_V)
+        s += "q_sh_lpm (lpm): {}\n".format(self.q_sh_lpm)
+        s += "q_aIn_lpm (polydisperse) (lpm): {}\n".format(self.q_aIn_lpm)
+        s += "q_aOut_lpm (monodisperse) (lpm): {}\n".format(self.q_aOut_lpm)
+        s += "STATUS: {}\n".format(self.status)
+
+        return s
+
+    def get_dp_range(self):
         """
-        Returns a string representation of variables stored in the the scan.  The format is: `var_name;var_value`.
-        Nonprimative variables are stored as  `var_name;type(var_value)`
+        Get the array of dp values that were read in from the data file
 
-        :return: The scan as a string.
-        :rtype: str
+        :return: A numpy array of dp values
         """
-        items = ("%s;%r" % (k, v) for k, v in list(self.__dict__.items()))
-        return "%s" % "\n".join(items)
+        return self.dp_range
 
-    ###############
-    # Get Values  #
-    ###############
-
-    def is_valid(self):
+    def get_log_dp_range(self):
         """
-        Retuns if the scan is valid or not.
+        Get the array of log dp values (which is nothing more than np.log on the
+        actual dp values. These are needed for the curve fit
 
-        :return: True if status == 1, otherwise False
-        :rtype: bool
+        :return: An numpy array of log dp values
         """
-        return self.status == 1  # TODO issues/45 affected by proposed status code change
+        return self.log_dp_range
 
-
-    def get_status_code_descript(self):
+    def get_values(self):
         """
-        Returns a string value explaining the status code of the current scan
-
-        :return: The status code of the current scan.
-        :rtype: str
+        :return: the *unfiltered* raw concentraction values read in for this run
         """
-        if self.status_code == 0:  # RESEARCH 0 Status Code
-            return "The scan shows no problem."
-        elif self.status_code == 1:  # RESEARCH 1 Status Code
-            return "There is no equivalent ccnc data for this scan. This is likely because ccnc data start at a later" \
-                   "time than smps scan, or it ends before the smps scan."
-        elif self.status_code == 2:  # RESEARCH 2 Status Code
-            return "The length of SMPS for this scan does not agree with the indicated scan duration of the experiment."
-        elif self.status_code == 3:  # RESEARCH 3 Status Code
-            return "The distribution of SMPS and CCNC data has a low correlation with those of the next few scans."
-        elif self.status_code == 4:  # RESEARCH 4 Status Code
-            return "The program can not locate the reference point for SMPS data."
-        elif self.status_code == 5:  # RESEARCH 5 Status Code
-            return "The program can not locate the reference point for CCNC data."
-        elif self.status_code == 6:  # RESEARCH 6 Status Code
-            return "The scan do not have enough CCNC or SMPS data. Most likely because we shift the data too much"
-        elif self.status_code == 7:  # RESEARCH 7 Status Code
-            return "The supersaturation rate or temperature do not remain constant throughout the scan!"
-        elif self.status_code == 8:  # RESEARCH 8 Status Code
-            return "The temperature do not remain constant enough throughout the scan!"
-        elif self.status_code == 9:  # RESEARCH 9 Status Code
-            return "The Scan is manually disabled by the user!"
-            # DOCQUESTION Where does the following play in?  Was commented out.  Looked like combined with 7? Split?
-            # return "The supersaturation rate does not remain constant throughout the scan duration."
+        return self.raw_values
 
-    ###############
-    # Set Values  #
-    ###############
-
-    def set_start_time(self, start_time):
+    def fit(self,num_peaks,verbose = False, plot_steps = False, ax_data = None, ax_residuals = None):
         """
-        Sets the start_time value in the scan object.
+        This is the mother function that performs the curve fit. The results of the fit
+        are stored in this class. Specifically:
 
-        :param datetime.datetime start_time:  The time the scan started.  From the smps file.
+        self.fit_params
+        self.fit_values
+        self.fit_residuals
+        self.fit_rmse
+
+        TODO - add the ability to autodetect the number of peaks
+        TODO - Improve the fitting to use weights
+
+        :param num_peaks: For the time, the user must specify the number of peaks
+        expected in the data.
+        :param verbose: print out info while doing the fit?
+        :param plot_steps: plot the fit after each step?
+        :return: Nothing. All values are stored in the object, including
+
         """
-        self.start_time = start_time
 
-    def set_end_time(self, end_time):
+        if num_peaks > MAX_PEAKS_TO_FIT:
+            raise ValueError("fit - num_peaks = {} exceeds max allowed {}".format(num_peaks,MAX_PEAKS_TO_FIT))
+
+        # The x values (i.e. predictors are the log dp values
+        # The y values are the *filtered* clean concentration values
+        xdata = self.get_log_dp_range()
+        ydata = self._y_filtered
+
+        # TODO - delete this test
+        # print("WARNING! Hard code filter log_dp < 4")
+        # sel = xdata < 4.0
+        # ydata[sel] = 0.0
+
+        y_gt_zero = ydata[(self._y_sel_good) & (ydata > 0)]
+        #self.fit_weights = np.asarray([0.01 for _ in ydata])
+
+        if verbose:
+            print("Starting fit")
+            print("xdata.shape = {}".format(xdata.shape))
+            print("ydata.shape = {}".format(ydata.shape))
+
+        # Set up initial starting points for our parameters
+        # initial parameters to use
+        p0_init = [y_gt_zero.mean() * .5,
+                   xdata.mean(),
+                   (xdata.max() - xdata.min()) * 0.05]*num_peaks
+        bounds = ([y_gt_zero.mean() * 0.1,  # min amp
+                   xdata.min(),  # min mu
+                   (xdata.max() - xdata.min()) * 0.01] * num_peaks,  # min sd
+                  [y_gt_zero.max() * 2,  # max amp
+                   xdata.max(),  # max mu
+                   (xdata.max() - xdata.min()) * 0.2] * num_peaks)  # max sd
+
+        if num_peaks == 1:
+            fit_func = _1gaussian
+        elif num_peaks == 2:
+            fit_func = _2gaussian
+        elif num_peaks == 3:
+            fit_func = _3gaussian
+        elif num_peaks == 4:
+            fit_func = _4gaussian
+        elif num_peaks == 5:
+            fit_func = _5gaussian
+
+        if verbose:
+            for peak in range(num_peaks):
+                print("p0_init = {}".format(p0_init[peak*3:(peak+1)*3]))
+                print("min bounds = {}".format(bounds[0][peak*3:(peak+1)*3]))
+                print("max bounds = {}".format(bounds[1][peak*3:(peak+1)*3]))
+
+        # Start with selecting all data
+        sel = [True for i in range(xdata.shape[0])]
+
+        for step in range(NUM_FIT_PASSES):
+
+            popt, pcov = scipy.optimize.curve_fit(
+                fit_func,
+                xdata[sel],
+                ydata[sel],
+                p0=p0_init,
+                bounds=bounds
+            )
+            # perr_gauss = np.sqrt(np.diag(pcov_gauss))
+
+            if verbose:
+                print("Pass {} : parameters:".format(step + 1))
+                for peak in range(num_peaks):
+                    print("Peak: {}".format(peak+1))
+                    params = popt[peak*3:(peak+1)*3]
+                    print("amp: {:.1f}".format(params[0]))
+                    print("mu: {:.3f}".format(params[1]))
+                    print("sd: {:.3f}".format(params[2]))
+
+            # Generate fit data
+            y_fit = list(map(lambda x: fit_func(x, *popt), xdata))
+
+            # Store the fit values and their residuals
+            self.fit_num_peaks = num_peaks
+            self.fit_params = popt
+            self.fit_values = y_fit
+            self.fit_residuals = ydata - y_fit
+            self.fit_rmse = np.sqrt(np.sum(self.fit_residuals[self._y_sel_good] *
+                                           self.fit_residuals[self._y_sel_good]))
+
+            dw = durbin_watson(self.fit_residuals)
+
+            # Compute the RMSE near peaks
+            sel_near_peak = [False for i in range(xdata.shape[0])]
+            for peak in range(num_peaks):
+                params = popt[peak * 3:(peak + 1) * 3]
+                sel_near_peak |= (xdata > params[1] - params[2]) & (xdata < params[1] + params[2])
+                if verbose:
+                    print(sel_near_peak)
+
+            self.fit_rmse_near_peaks = np.sqrt(np.sum(self.fit_residuals[sel_near_peak] * self.fit_residuals[sel_near_peak]))
+
+            if verbose:
+                print("RMSE = {}".format(self.fit_rmse))
+                print("Durbin-Watson = {}".format(dw))
+                print("narrow RMSE = {}".format(self.fit_rmse_near_peaks))
+
+            if plot_steps:
+                if verbose:
+                    print("Generating plot...")
+                # if ax_data is None:
+                self.fig = plt.figure(figsize=(6, 4), dpi=100)
+                self.gridspec = self.fig.add_gridspec(4, 1)
+
+                ax_data = self.fig.add_subplot(self.gridspec[0:3, 0])
+                ax_residuals = self.fig.add_subplot(self.gridspec[3, 0],
+                                                             sharex=ax_data)
+
+                self.plot(ax_data=ax_data,ax_residuals=ax_residuals)
+                plt.show()
+
+            # Now, this is the tricky part. Here, we carefully narrow in on the correct
+            # gaussians by eliminating data that is outside of some fraction of standard
+            # deviations for each curve
+            sel = [False for i in range(xdata.shape[0])]
+
+            # For each peak select the data around it to use for the next iteration
+            for peak in range(num_peaks):
+                x_mean_est = popt[peak * 3 + 1]
+                x_sd_est = popt[peak * 3 + 2]
+
+                # Now, we need to determine how much data around the sd we want
+#                x_sd_factor = 1
+                x_sd_factor = 2 / (step + 1)
+
+                # Find the min and max around the mean, and select that data for next iteration
+                min_x = x_mean_est - x_sd_est * x_sd_factor
+                max_x = x_mean_est + x_sd_est * x_sd_factor
+                sel_peak = (xdata >= min_x) & (xdata <= max_x)
+
+                # Select it!
+                sel = sel | sel_peak
+
+            # Set the new parameters
+            p0_init = popt
+
+        # return popt, pcov
+        return
+
+    def get_fit_peak_dp(self):
         """
-        Sets the end_time value in the scan object.
-
-        :param datetime.datetime end_time: The end time of the scan.  Typically the start time plus the duration.
+        :return:         Return a list of the fitted dp values
         """
-        self.end_time = end_time
+        print(self.fit_num_peaks)
+        sel = np.array(list(range(1,1+3*(self.fit_num_peaks-1)+1,3)))
+        x = np.exp(self.fit_params[sel])
+        return x
 
-    def set_up_time(self, up_time):
+
+    def plot(self, ax_data: plt.Axes, ax_residuals: plt.Axes):
         """
-        Sets the scan_up_time value in the scan object.
+        Create a plot of the raw data and fitted data in ax_data,
+        and the residuals resulting from the fit in ax_residuals. If the user
+        does not want to plot residuals, OR if a fit has not been completed,
+        then the residuals are not plotted
 
-        :param int up_time:  The scan up time from the smps file.
+        :param ax_data: The Axes object to plot the data in
+        :param ax_residuals: The Axes object to plot the residuals in, or None
+        if no residuals are plotted.
         """
-        self.scan_up_time = up_time
 
-    def set_down_time(self, down_time):
-        """
-        Sets the scan_down_time value in the scan object.
+        # fig = plt.figure(figsize=(10,8))
+        # ax = fig.add_gridspec(4,1)
+        # ax_data = fig.add_subplot(ax[0:3,0])
+        # ax_residuals = fig.add_subplot(ax[3,0])
 
-        :param int down_time:  The scan down time from the retrace time in the smps file.
-        """
-        self.scan_down_time = down_time
+        xdata = self.get_log_dp_range()
+        ydata = self.get_values()
 
-    def set_duration(self, duration):
-        """
-        Sets the duration value in the scan object.
+        # Plot actual data
+        ax_data.plot(xdata,ydata, "ro")
+        ax_data.set_ylabel("conc",family="serif",  fontsize=12)
+        ax_data.grid(True)
 
-        :param int duration:  The duration of the scan. Typically this is scan_up_time + scan_down_time.
-        """
-        self.duration = duration
+        # Plot the curve fit... if a fit was completed
+        if self.fit_values:
+            ax_data.plot(xdata,self.fit_values, 'k--')
 
+            # Let's separate the peaks
+            for peak in range(self.fit_num_peaks):
+                gauss_params = self.fit_params[peak*3:(peak+1)*3]
+                gauss_fit = _1gaussian(xdata, *gauss_params)
+                color = "gbmcy"[peak]
+                ax_data.plot(xdata,gauss_fit,color)
 
-    def add_to_diameter_midpoints(self, new_data):
-        """
-        Adds the new_data value to the diameter_midpoints list in the scan object.
+            #ax.set_xscale('log')
+            ax_residuals.plot(xdata[self._y_sel_good], self.fit_residuals[self._y_sel_good], "bo")
+            ax_residuals.plot(xdata[np.logical_not(self._y_sel_good)],
+                     self.fit_residuals[np.logical_not(self._y_sel_good)],
+                     "k.")
+            ax_residuals.plot(xdata, np.zeros(xdata.shape[0]))
+            ax_residuals.set_xlabel("log dp",family="serif",  fontsize=12)
+            ax_residuals.set_ylabel("residuals")
 
-        :param str|int|float new_data: The diameter_midpoints to add to the list
-        """
-        self.diameter_midpoints.append(float(new_data))
+        ax_data.legend(loc="best")
 
-    def set_status(self, status):
-        """
-        Sets the status value in the scan object.
-
-        :param int status: The updated status
-        """
-        self.status = status
-
-    def set_status_code(self, code):
-        """
-        Sets the status_code value in the scan object.
-
-        :param int code: The updated status code
-        """
-        self.status_code = code
-
-    # def set_shift_factor(self, factor):
-    #     """
-    #     If the factor is lless then that length of number of CCNC raw data points, it sets the shift factor to the
-    #     value provided.  Otherwise it sets the shift factor to zero.
-    #
-    #     :param int factor: The number of data points to shift data so that the SMPS data and the CCNC data align.
-    #     """
-    #     if factor < len(self.raw_ccnc_counts):
-    #         self.shift_factor = factor
-    #     else:
-    #         self.shift_factor = 0  # RESEARCH Does a 0 make sense?
-
-    # def set_sigmoid_params(self, params):
-    #     """
-    #     # REVIEW Documentation
-    #
-    #     :param params: # REVIEW Documentation
-    #     :type params: # REVIEW Documentation
-    #     """
-    #     # COMBAKL Sigmoid
-    #     self.sigmoid_params = params
-    #     self.fit_sigmoids()
-
-    #######################
-    # Validation Methods  #
-    #######################
-
-    # def pre_align_self_test(self):
-    #     """
-    #     Compares the length of the smps data and if it's not in the same as the duration, invalidates the scan
-    #     """
-    #     if len(self.raw_smps_counts) != self.duration:
-    #         self.status = 0
-    #         self.set_status_code(2)  # RESEARCH 2 Status Code
-    #         # DOCQUESTION K: more work over here. Can always improve
-    #         # DOCQUESTION K: perform Hartigan's dip test to test for bimodality
-
-    # def post_align_self_test(self):
-    #     """
-    #     Checks for invalid scans.  Currently tests for:
-    #
-    #     - Error in supersaturation
-    #     - Standard devations in the three tempuratures greater than 1
-    #     - Checks for uniform values in temperatures by comparing the first value to all the values
-    #
-    #     """
-    #     # DOCQUESTION K: more work over here. Can always improve this one
-    #     # Check for error in supersaturation
-    #     for i in range(len(self.processed_super_sats)):
-    #         if not hf.are_floats_equal(self.true_super_sat, self.processed_super_sats[i]):  # DOCQUESTION err value?
-    #             self.true_super_sat = None
-    #             self.set_status(0)
-    #             self.set_status_code(7)  # RESEARCH 7 Status Code
-    #             break
-    #     # check for standard deviation on tempuratures
-    #     if np.std(self.processed_T1s) > 1 or np.std(self.processed_T2s) > 1 or np.std(self.processed_T3s) > 1:
-    #         self.set_status(0)
-    #         self.set_status_code(7)  # RESEARCH 7 Status Code
-    #     # check for uniform values
-    #     for i in range(len(self.processed_T1s)):
-    #         # check for temperature 1
-    #         if not hf.are_floats_equal(self.processed_T1s[0], self.processed_T1s[i], 1):
-    #             self.set_status(0)
-    #             self.set_status_code(7)  # RESEARCH 7 Status Code
-    #         # check for temperature 2
-    #         if not hf.are_floats_equal(self.processed_T2s[0], self.processed_T2s[i], 1):
-    #             self.set_status(0)
-    #             self.set_status_code(7)  # RESEARCH 7 Status Code
-    #         # check for temperature 3
-    #         if not hf.are_floats_equal(self.processed_T2s[0], self.processed_T2s[i], 1):
-    #             self.set_status(0)
-    #             self.set_status_code(7)  # RESEARCH 7 Status Code
-
-    #############################
-    # Data Transformation Code  #
-    #############################
-
-    # def do_basic_trans(self):
-    #     """
-    #     Convert lists to numpy arrays.
-    #     """
-    #     self.raw_T1s = np.asarray(self.raw_T1s)
-    #     self.raw_T2s = np.asarray(self.raw_T2s)
-    #     self.raw_T3s = np.asarray(self.raw_T3s)
-    #     self.raw_smps_counts = np.asarray(self.raw_smps_counts, dtype=np.float64)
-    #     self.raw_ccnc_counts = np.asarray(self.raw_ccnc_counts, dtype=np.float64)
-    #     self.raw_normalized_concs = np.asarray(self.raw_normalized_concs)
-    #     self.diameter_midpoints = np.asarray(self.diameter_midpoints)
-    #     self.raw_ave_ccnc_sizes = np.asarray(self.raw_ave_ccnc_sizes)
-    #     self.raw_super_sats = np.asarray(self.raw_super_sats)
-    #     self.ave_smps_diameters = np.asarray(self.ave_smps_diameters)
-    #
-    # def generate_processed_data(self):  # RESEARCH should this be called apply shift?
-    #     """
-    #     Processing SMPS is straightforward.
-    #
-    #     Processing CCNC is based on the shift factor.
-    #
-    #     - If there is a negative shift factor, insert zeros before the CCNC data.
-    #     - If there is a positive shift factor, drop the beginning rows by the shift factor.
-    #     - If there is not enough data, then zeros are added to the end.
-    #     - Processed data is then truncated to match the length of duration.
-    #
-    #     Finally the :class:`~scan.Scan.post_align_self_test` is processed to verify validity of scan.
-    #
-    #     Original data is stored seperately to ensure no data loss when shifting.
-    #     """
-    #     # Copy the raw SMPS data to ensure no data loss
-    #     self.processed_smps_counts = self.raw_smps_counts
-    #     # Process the dndlogdp list  # DOCQUESTION naming again
-    #     self.processed_normalized_concs = hf.normalize_dndlogdp_list(self.raw_normalized_concs)
-    #     # Copy raw CCNC values to local variables
-    #     ccnc_counts = self.raw_ccnc_counts[:]
-    #     ccnc_count_sums = self.raw_ccnc_count_sums[:]
-    #     ccnc_sample_flow = self.raw_ccnc_sample_flow[:]
-    #     t1s = self.raw_T1s[:]
-    #     t2s = self.raw_T2s[:]
-    #     t3s = self.raw_T3s[:]
-    #     super_sats = self.raw_super_sats[:]
-    #     ave_ccnc_sizes = self.raw_ave_ccnc_sizes[:]
-    #     # Update for shift factors
-    #     # -- if shift factor is non-negative  # DOCQUESTION But, we assumed it always would be?
-    #     if self.shift_factor >= 0:
-    #         # if not enough ccnc counts to even shift, the scan is invalid
-    #         if len(ccnc_counts) < self.shift_factor:
-    #             self.set_status(0)
-    #             self.set_status_code(6)  # RESEARCH 6 Status Code
-    #         # Shift the data based on the shift factor
-    #         ccnc_counts = ccnc_counts[self.shift_factor:]
-    #         ccnc_count_sums = ccnc_count_sums[self.shift_factor:]
-    #         ccnc_sample_flow = ccnc_sample_flow[self.shift_factor:]
-    #         t1s = t1s[self.shift_factor:]
-    #         t2s = t2s[self.shift_factor:]
-    #         t3s = t3s[self.shift_factor:]
-    #         super_sats = super_sats[self.shift_factor:]
-    #         ave_ccnc_sizes = ave_ccnc_sizes[self.shift_factor:]
-    #     else:  # -- if shift factor is negative
-    #         # populate ccnc counts with 0s in the fronts
-    #         ccnc_counts = hf.fill_zeros_to_begin(ccnc_counts, abs(self.shift_factor))
-    #         ccnc_count_sums = hf.fill_zeros_to_begin(ccnc_count_sums, abs(self.shift_factor))
-    #         ccnc_sample_flow = hf.fill_zeros_to_begin(ccnc_sample_flow, abs(self.shift_factor))
-    #         t1s = hf.fill_zeros_to_begin(t1s, abs(self.shift_factor))
-    #         t2s = hf.fill_zeros_to_begin(t2s, abs(self.shift_factor))
-    #         t3s = hf.fill_zeros_to_begin(t3s, abs(self.shift_factor))
-    #         super_sats = hf.fill_zeros_to_begin(super_sats, abs(self.shift_factor))
-    #         ave_ccnc_sizes = hf.fill_zeros_to_begin(ave_ccnc_sizes, abs(self.shift_factor))
-    #     # If the shifted data is not long enough to match duration, fill with zeros.
-    #     ccnc_counts = hf.fill_zeros_to_end(ccnc_counts, self.duration)
-    #     ccnc_count_sums = hf.fill_zeros_to_end(ccnc_count_sums, self.duration)
-    #     ccnc_sample_flow = hf.fill_zeros_to_end(ccnc_sample_flow, self.duration)
-    #     t1s = hf.fill_zeros_to_end(t1s, self.duration)
-    #     t2s = hf.fill_zeros_to_end(t2s, self.duration)
-    #     t3s = hf.fill_zeros_to_end(t3s, self.duration)
-    #     super_sats = hf.fill_zeros_to_end(super_sats, self.duration)
-    #     ave_ccnc_sizes = hf.fill_zeros_to_end(ave_ccnc_sizes, self.duration)
-    #     # Update the objects values with the local calculations truncating to the length of duration
-    #     self.processed_ccnc_counts = ccnc_counts[:self.duration]
-    #     self.processed_ccnc_count_sums = ccnc_count_sums[:self.duration]
-    #     self.processed_ccnc_sample_flow = ccnc_sample_flow[:self.duration]
-    #     self.processed_T1s = t1s[:self.duration]
-    #     self.processed_T2s = t2s[:self.duration]
-    #     self.processed_T3s = t3s[:self.duration]
-    #     self.processed_super_sats = super_sats[:self.duration]
-    #     self.processed_ave_ccnc_sizes = ave_ccnc_sizes[:self.duration]
-    #     self.true_super_sat = self.processed_super_sats[0]
-    #     # Perform self test
-    #     self.post_align_self_test()
-    #     self.get_activation()
-    #
-    # def correct_charges(self):
-    #     """
-    #     Corrects the charges for the scan by resolving zeros to small values and correcting the charges via
-    #     :class:`~fast_dp_calculator`
-    #     """
-    #     # scan is not usable, do nothing
-    #     if not self.is_valid():
-    #         return -1
-    #     # Initiate some necessary variables
-    #     ccnc = self.processed_ccnc_counts[:]
-    #     smps = self.processed_smps_counts[:]
-    #     ave_smps_dp = self.ave_smps_diameters[:]
-    #     # Basic Processing
-    #     ccnc = hf.resolve_zeros(ccnc)
-    #     smps = hf.resolve_zeros(smps)
-    #     ccnc = hf.resolve_small_ccnc_vals(ccnc)
-    #     # Make copies of the lists
-    #     prev_ccnc = np.copy(ccnc)
-    #     prev_smps = np.copy(smps)
-    #     corrected_ccnc = np.copy(ccnc)
-    #     corrected_smps = np.copy(smps)
-    #     # Correct the charges
-    #     for i in range(const.NUM_OF_CHARGES_CORR):
-    #         ave_smps_dp, smps, ccnc, corrected_smps, corrected_ccnc, prev_smps, prev_ccnc = \
-    #             fast_dp_calculator.correct_charges(
-    #                 ave_smps_dp, smps, ccnc, corrected_smps, corrected_ccnc, prev_smps, prev_ccnc)
-    #     # Save the smps and ccnc data after charge correction to new variables
-    #     self.corrected_smps_counts = corrected_smps
-    #     self.corrected_ccnc_counts = corrected_ccnc
-    #
-    # def fit_sigmoids(self):
-    #     """
-    #     # REVIEW Documentation
-    #     """
-    #     # COMBAKL Sigmoid
-    #     if not self.is_valid():
-    #         return
-    #     sigmoid_fit.get_all_fit_curves(self)
-    #
-    # def get_activation(self):
-    #     """
-    #     Calculates the activation percentage for each scan on the fly.
-    #     Updates each time a new shift value is selected
-    #
-    #     :return: The activation percentage.  If an exception occurs, returns `"Unknown"`
-    #     :rtype: str|int
-    #     """
-    #     # Sum of CCNC Uptime across all 20 bins  # TODO Fix
-    #     ccnc_uptime = sum(self.processed_ccnc_count_sums[0:self.scan_up_time])
-    #     # Sum of SMPS counts (Section 4) during Uptime
-    #     smps_uptime = round(sum(self.processed_smps_counts[0:self.scan_up_time]) / self.counts_to_conc, 0)
-    #     # Average Sample Flow (CCNC)
-    #     mean_sample_flow = sum(self.processed_ccnc_sample_flow[0:self.scan_up_time])
-    #     mean_sample_flow /= len((self.processed_ccnc_sample_flow[0:self.scan_up_time]))
-    #
-    #     if smps_uptime == 0 or sum(self.processed_ccnc_sample_flow[0:self.scan_up_time]) == 0:
-    #         return "Unknown"
-    #     else:
-    #         try:
-    #             return round(((ccnc_uptime / smps_uptime) * (self.cpc_sample_flow/(mean_sample_flow/1000))*100), 0)
-    #         except Exception as e:
-    #             logger.warning("Scan (" + str(self.index) + "):" + str(e))
-    #             return "Unknown"
+        # fig.tight_layout()
+        #
+        # return fig, ax

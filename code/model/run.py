@@ -1,23 +1,23 @@
 """
-Samples - this class encapsulates all of the samples contained in an experiment
+RunOfScans - this class encapsulates all of the run_of_scans contained in an experiment
 """
 
 import numpy as np
 import pandas as pd
 
-from code.model.sample import Sample
+from code.model.scan import Scan
 
-class Samples:
+class RunOfScans:
     """
-    The Samples class - this represents all samples in the entire experiment
+    The RunOfScans class - this represents all scans in the entire run
     """
     def __init__(self):
         self.df = None
         self.num_dp_values = 0
 
     def __repr__(self):
-        s = "Samples:\n"
-        if self.df:
+        s = "RunOfScans:\n"
+        if self.df is not None:
             s += "  Index: {}\n".format(repr(self.df.index))
             s += "  Columns: {}\n".format(repr(self.df.columns))
             s += "  Num Rows: {}\n".format(repr(self.df.shape[0]))
@@ -30,7 +30,7 @@ class Samples:
 
     def read_file(self, filename):
         """
-        Read in all the samples
+        Read in all the run_of_scans
         """
         skiprows = 18
         self.df = pd.read_csv(filename,
@@ -46,7 +46,7 @@ class Samples:
         i_end = np.where(self.df.index == "Scan Up Time(s)")[0][0]
         self.num_dp_values = i_end - i_start - 1
 
-    def get_num_samples(self) -> int:
+    def get_num_scans(self) -> int:
         """
         Simple helper function to obtain the number of scans in this run
         """
@@ -55,16 +55,17 @@ class Samples:
         else:
             return 0
 
-    def get_sample(self,sample_col: int) -> Sample:
+    def get_scan(self, scan_col: int) -> Scan:
         """
-        This retrieves one sample, based on the sample number
-        :param sample_col: The column of the sample. NOTE: this is not likely the
-        same as the recorded sample number. Usually, it'll be one off (i.e. we start
+        This retrieves one scan, based on the scan number
+
+        :param scan_col: The column of the scan in the data frame. NOTE: this is not likely the
+        same as the recorded scan number. Usually, it'll be one off (i.e. we start
         with 0. They start with 1.)
 
-        :return: A Sample object
+        :return: A Scan object
         """
-        sample= Sample(self.df.iloc[:,[sample_col]].copy(),
-                       self.num_dp_values)
-        return sample
+        scan = Scan(self.df.iloc[:, [scan_col]].copy(),
+                    self.num_dp_values)
+        return scan
 
