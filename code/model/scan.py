@@ -19,6 +19,7 @@ import pandas as pd
 from statsmodels.stats.stattools import durbin_watson
 import scipy
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 ##### Our fit functions
@@ -340,6 +341,8 @@ class Scan:
                 if verbose:
                     print("Generating plot...")
                 # if ax_data is None:
+
+                # Yeah, making the fig and gridspec part of the class, not a great idea, but good enough
                 self.fig = plt.figure(figsize=(6, 4), dpi=100)
                 self.gridspec = self.fig.add_gridspec(4, 1)
 
@@ -348,6 +351,9 @@ class Scan:
                                                              sharex=ax_data)
 
                 self.plot(ax_data=ax_data,ax_residuals=ax_residuals)
+                ax_data.annotate('test label',
+                            xy=(0.1, 0.8), xycoords='figure fraction', fontsize=15)
+                ax_data.text(100, 1000, r'$\mu=100,\ \sigma=15$')
                 plt.show()
 
             # Now, this is the tricky part. Here, we carefully narrow in on the correct
@@ -405,13 +411,18 @@ class Scan:
         # ax_data = fig.add_subplot(ax[0:3,0])
         # ax_residuals = fig.add_subplot(ax[3,0])
 
-        xdata = self.get_log_dp_range()
+        #xdata = self.get_log_dp_range()
+        xdata = self.get_dp_range()
         ydata = self.get_values()
 
         # Plot actual data
         ax_data.plot(xdata,ydata, "ro")
-        ax_data.set_ylabel("conc",family="serif",  fontsize=12)
+        #ax_data.set_ylabel("conc",family="serif",  fontsize=12)
+        ax_data.set_ylabel("conc", fontsize=20)
         ax_data.grid(True)
+        ax_data.set_xscale("log")
+        ax_data.set_xticks([10,50] + list(range(100,1000,100)))
+        ax_data.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
 
         # Plot the curve fit... if a fit was completed
         if self.fit_values:
@@ -424,14 +435,14 @@ class Scan:
                 color = "gbmcy"[peak]
                 ax_data.plot(xdata,gauss_fit,color)
 
-            #ax.set_xscale('log')
             ax_residuals.plot(xdata[self._y_sel_good], self.fit_residuals[self._y_sel_good], "bo")
             ax_residuals.plot(xdata[np.logical_not(self._y_sel_good)],
                      self.fit_residuals[np.logical_not(self._y_sel_good)],
                      "k.")
             ax_residuals.plot(xdata, np.zeros(xdata.shape[0]))
-            ax_residuals.set_xlabel("log dp",family="serif",  fontsize=12)
-            ax_residuals.set_ylabel("residuals")
+            ax_residuals.set_xlabel("dp", fontsize=20)
+            ax_residuals.set_ylabel("residuals", fontsize=20)
+            ax_residuals.grid(True)
 
         ax_data.legend(loc="best")
 
