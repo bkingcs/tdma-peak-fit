@@ -2,8 +2,8 @@
 from PySide2.QtWidgets import QFileDialog
 import PySide2.QtWidgets as Qw
 
-from code.model.model import Model
-from code.view.main_window import MainWindow
+from htdma_code.model.model import Model
+from htdma_code.view.main_window import MainWindow
 
 class Controller:
     def __init__(self,model: Model,main_view: MainWindow):

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
-from code.model.model import Model
+from htdma_code.model.model import Model
 
 mpl.use('Qt5Agg')
 

@@ -12,7 +12,7 @@ import PySide2.QtWidgets as Qw
 from PySide2.QtGui import QKeySequence
 
 from OLD.view.widgets import central_widget as c_central_widget
-from code.model import model as model
+from htdma_code.model import model as model
 import OLD.view.graphs
 
 ########
@@ -277,7 +277,7 @@ class MainView(Qw.QMainWindow):  # REVIEW Code Class
         self.setCentralWidget(stacked_central_widget)
         return central_widget_alignscan, stacked_central_widget
 
-    def switch_central_widget(self):  # RESEARCH How code works after controller.start is added
+    def switch_central_widget(self):  # RESEARCH How htdma_code works after controller.start is added
         """
         Toggles graph display in middle of screen between Alighment Graphs and Kappa Graphs
         """

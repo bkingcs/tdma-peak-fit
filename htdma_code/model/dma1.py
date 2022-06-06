@@ -1,14 +1,10 @@
-"""
-This class encapsulates DMA 1, including all of the parameters used by it, and
-dealing with generating the theoretical plot
-"""
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 from matplotlib.ticker import FormatStrFormatter
 
-from code.model.setup import Setup
-from code.model.run import RunOfScans
+from htdma_code.model.setup import Setup
+from htdma_code.model.run import Run
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
 # Coulumb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
@@ -37,11 +33,19 @@ def lpm_to_cm3_per_sec(lpm):
 
 class DMA_1:
     """
-    DMA_1 -
+    DMA_1
+
+    This class encapsulates DMA 1, which is the non-scanning, static DMA in a TDMA setup. This is the DMA that the
+    polydisperse flow comes into. We'll store only the parameters set by DMA 1. We will also generate the
+    theoretical plot for DMA 1.
     """
     DEFAULT_VOLTAGE = 5000.0
 
     def __init__(self, debug=False):
+        """
+        Initialize a DMA_1 object with some default settings based on the popular TSI 3080 DMA
+
+        """
         self.setup = Setup()
 
         if debug:
@@ -120,7 +124,7 @@ class DMA_1:
 
         return s
 
-    def update_from_setup_and_run(self, setup: Setup, run_of_scans: RunOfScans):
+    def update_from_setup_and_run(self, setup: Setup, run_of_scans: Run):
         self.setup = setup
         scan = run_of_scans.get_scan(0)
 

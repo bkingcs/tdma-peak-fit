@@ -5,9 +5,9 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QPushButton
 import sys
 from PySide2.QtWidgets import QApplication
 
-from code.controller.controller import Controller
-from code.model.model import Model
-from code.view.main_window import MainWindow
+from htdma_code.controller.controller import Controller
+from htdma_code.model.model import Model
+from htdma_code.view.main_window import MainWindow
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

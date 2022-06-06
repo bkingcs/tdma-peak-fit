@@ -23,11 +23,12 @@ class Setup:
     The Setup class - this encapsulates all parameters for a given run.
 
     It encapsulates two classes:
-    * DMA - the parameters that specify the DMA.
+    * DMA - the parameters that specify the DMA hardware configuration
+    * Params - the parameters that specify the run
     """
     class DMA:
         """
-        Standard
+        Nested class to encapsulate only the DMA hardware
         """
         def __init__(self):
             self.radius_in_cm = 0
@@ -45,6 +46,9 @@ class Setup:
             return s
 
     class Params:
+        """
+        Nested class to encapsulate the parameters for the run
+        """
         def __init__(self):
             self.mu_gas_viscosity_Pa_sec = 0
             self.gas_density = 0
@@ -72,12 +76,18 @@ class Setup:
         return repr(self.dma_1) + repr(self.params)
 
     def read_file(self, filename):
-        # Read in the first 18 rows of the data file
+        """
+        Read in the first 18 rows of the data file using pandas read_csv
+
+        Params:
+        * filename - a string representing the file to read in
+        """
         df_dma_1_info = pd.read_csv(filename,
                          header=None,
                          sep='\t',
                          index_col=0,
-                         nrows=18)
+                         nrows=18,
+                         encoding = "ISO-8859-1")
 
         # NOTE - The downloaded file shows this as cm, but the numbers in the file are clearly m
         # self.dma_1.radius_in_cm = float(df_dma_1_info.iloc[ROW_DMA_RADIUS_IN,0])

@@ -183,7 +183,7 @@ class DockerScanInformation(Qw.QFrame):
         """
         Toggles the enabled status of a scan.  Updates the scan values and the scan information display.
         """
-        # TODO issues/45 Update code when reworked scan status code
+        # TODO issues/45 Update htdma_code when reworked scan status htdma_code
         if len(self.controller.scans) != 0:
             curr_scan = self.controller.scans[self.controller.curr_scan_index]
             # Scan is originally marked good
@@ -455,7 +455,7 @@ class DockerSigmoidWidget(Qw.QFrame):
         # Add various widgets to display
         params_group_box.setLayout(v_layout)
         self.dp_widgets.append([sig_mid, curve_max, log_grow_rate, y_0])
-        # RESEARCH Hard code-y values again for first parameter
+        # RESEARCH Hard htdma_code-y values again for first parameter
         self.layout().insertRow(len(self.dp_widgets)+8, params_group_box)
 
     def apply_sigmoid_params(self):

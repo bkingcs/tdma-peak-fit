@@ -1,5 +1,6 @@
 """
-This class represents a single Scan from a run
+This class represents a single Scan from a run. This code will handle
+everything related to one scan, including curve fitting.
 
 
 
@@ -67,6 +68,9 @@ NUM_FIT_PASSES = 6
 class Scan:
     """
     Scan encapsulates a single scan of data and its parameters
+
+    Attributes:
+        -
     """
     def __init__(self, df: pd.DataFrame, num_dp_values: int):
         """
@@ -245,7 +249,7 @@ class Scan:
         ydata = self._y_filtered
 
         # TODO - delete this test
-        # print("WARNING! Hard code filter log_dp < 4")
+        # print("WARNING! Hard htdma_code filter log_dp < 4")
         # sel = xdata < 4.0
         # ydata[sel] = 0.0
 

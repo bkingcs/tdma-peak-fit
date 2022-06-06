@@ -248,7 +248,7 @@ class KappaTableWidget(Qw.QTableWidget):
         row = item.row()
         if self.item(row, 1) is None or self.item(row, 2) is None:
             return
-        # RESEARCH Following lines of code do nothing
+        # RESEARCH Following lines of htdma_code do nothing
         # ss = self.item(row, 1).text()
         # dp = self.item(row, 2).text()
 

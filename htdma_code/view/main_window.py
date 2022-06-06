@@ -12,12 +12,12 @@ from PySide2.QtWidgets import (
 import PySide2.QtWidgets as Qw
 
 #from layout_colorwidget import Color
-import code.model.model as model_pkg
-from code.model.scan import MAX_PEAKS_TO_FIT
+import htdma_code.model.model as model_pkg
+from htdma_code.model.scan import MAX_PEAKS_TO_FIT
 
-from code.view.helper_widgets import TitleHLine
-from code.view.dma_1_graph import DMA_1_Graph_Widget
-from code.view.scan_data_graph import Scan_Data_Graph_Widget
+from htdma_code.view.helper_widgets import TitleHLine
+from htdma_code.view.dma_1_graph import DMA_1_Graph_Widget
+from htdma_code.view.scan_data_graph import Scan_Data_Graph_Widget
 
 class MainWindow(QMainWindow):
     def __init__(self, model: model_pkg.Model):

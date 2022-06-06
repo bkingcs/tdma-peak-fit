@@ -1,22 +1,23 @@
-"""
-RunOfScans - this class encapsulates all of the run_of_scans contained in an experiment
-"""
 
 import numpy as np
 import pandas as pd
 
-from code.model.scan import Scan
+from htdma_code.model.scan import Scan
 
-class RunOfScans:
+class Run:
     """
-    The RunOfScans class - this represents all scans in the entire run
+    The Run class
+
+    This class encapsulates all scans in a given run. All scans are processed right from the raw data file
+    and managed as a pandas DataFrame.
+
     """
     def __init__(self):
         self.df = None
         self.num_dp_values = 0
 
     def __repr__(self):
-        s = "RunOfScans:\n"
+        s = "Run:\n"
         if self.df is not None:
             s += "  Index: {}\n".format(repr(self.df.index))
             s += "  Columns: {}\n".format(repr(self.df.columns))
@@ -37,7 +38,8 @@ class RunOfScans:
                  header=0,
                  sep='\t',
                  index_col=0,
-                 skiprows=skiprows)
+                 skiprows=skiprows,
+                 encoding = "ISO-8859-1")
         ts = pd.to_datetime(self.df.apply(lambda col: col["Date"] + " " + col["Start Time"], axis=0))
         self.df.loc["Date", :] = ts
         self.df = self.df.drop(index=["Start Time"])

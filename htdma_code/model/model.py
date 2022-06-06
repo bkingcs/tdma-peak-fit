@@ -2,17 +2,25 @@
 Model
 """
 
-import code.model.setup
-import code.model.run
-import code.model.dma1
-import code.model.scan
+import htdma_code.model.setup
+import htdma_code.model.run
+import htdma_code.model.dma1
+import htdma_code.model.scan
 
 class Model:
+    """
+    This is the main class that encapsulates pretty much everything for a complete run
+
+    Attributes:
+        setup - an instance of the Setup class
+        run_of_scans - an instance of Run, which represents all of the scans of a given run
+        dma1 - an instance of DMA_1, which represents the configuation of DMA_1
+    """
     def __init__(self):
-        self.setup = code.model.setup.Setup()
-        self.run_of_scans = code.model.run.RunOfScans()
-        self.dma1 = code.model.dma1.DMA_1(debug=False)
-        self.current_scan: code.model.scan.Scan = None
+        self.setup = htdma_code.model.setup.Setup()
+        self.run_of_scans = htdma_code.model.run.Run()
+        self.dma1 = htdma_code.model.dma1.DMA_1(debug=False)
+        self.current_scan: htdma_code.model.scan.Scan = None
         self.current_scan_num: int = None
 
     def process_new_file(self, filename):

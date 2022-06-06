@@ -43,7 +43,7 @@ class Scan(object):
     """
 
     def __init__(self, index):
-        # TODO issues/45 combine status and code into one
+        # TODO issues/45 combine status and htdma_code into one
         # DOCQUESTION / RESEARCH duration = scan_up_time + scan_down_time; end time is start_time+duration. Neccessary?
         # Controller#start.create_scans()
         self.version = "2.2.5"
@@ -97,14 +97,14 @@ class Scan(object):
         :return: True if status == 1, otherwise False
         :rtype: bool
         """
-        return self.status == 1  # TODO issues/45 affected by proposed status code change
+        return self.status == 1  # TODO issues/45 affected by proposed status htdma_code change
 
 
     def get_status_code_descript(self):
         """
-        Returns a string value explaining the status code of the current scan
+        Returns a string value explaining the status htdma_code of the current scan
 
-        :return: The status code of the current scan.
+        :return: The status htdma_code of the current scan.
         :rtype: str
         """
         if self.status_code == 0:  # RESEARCH 0 Status Code
@@ -196,7 +196,7 @@ class Scan(object):
         """
         Sets the status_code value in the scan object.
 
-        :param int code: The updated status code
+        :param int code: The updated status htdma_code
         """
         self.status_code = code
 

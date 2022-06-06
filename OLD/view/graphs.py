@@ -9,7 +9,7 @@ import numpy as np
 # Internal Packages
 # import data.klines
 # import helper_functions as hf
-from code.model import DMA_1
+from htdma_code.model import DMA_1
 
 class FirstDMA(FigureCanvas):
     """
@@ -31,7 +31,7 @@ class FirstDMA(FigureCanvas):
 class SecondGraph(FigureCanvas):
     """
     Plotting a graph to start creating plain graphs for when
-    the code comes in
+    the htdma_code comes in
     """
     def __init__(self):
         self.fig, self.ax = plt.subplots(2)
@@ -52,7 +52,7 @@ class SecondGraph(FigureCanvas):
 class ThirdGraph(FigureCanvas):
     """
     Plotting a graph to start creating plain graphs for when
-    the code comes in
+    the htdma_code comes in
     """
     def __init__(self):
         self.fig, (self.ax1, self.ax2) = plt.subplots(2)
@@ -77,7 +77,7 @@ class ThirdGraph(FigureCanvas):
 class FourthGraph(FigureCanvas):
     """
     Plotting a graph to start creating plain graphs for when
-    the code comes in
+    the htdma_code comes in
     """
     def __init__(self):
         self.fig, self.ax = plt.subplots()

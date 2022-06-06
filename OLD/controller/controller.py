@@ -14,8 +14,8 @@ import PySide2.QtWidgets as Qw
 # import constants as const
 # import helper_functions as hf
 
-from code import main
-from code.model import model as model
+from htdma_code import main
+from htdma_code.model import model as model
 import OLD.view.main_view
 
 # Set logger for this module
