@@ -1,4 +1,5 @@
 from PySide2.QtCore import Qt
+
 from PySide2.QtWidgets import (
     QLabel,
     QMainWindow,
@@ -255,12 +256,13 @@ class MainWindow(QMainWindow):
         """
         print("update_scan_widget_views: " + repr(self.model.current_scan))
         if self.model.current_scan is not None:
-            self.scan_num_lineedit.setText(str(self.model.current_scan.scan_id_from_data))
-            self.scan_timestamp_label.setText(self.model.current_scan.time_stamp.strftime("%H:%M:%S"))
-            self.low_V_label.setText("{:.0f}".format(self.model.current_scan.low_V))
-            self.high_V_label.setText("{:.0f}".format(self.model.current_scan.high_V))
-            self.scan_up_time_label.setText("{:.0f}".format(self.model.current_scan.scan_up_time))
-            self.scan_down_time_label.setText("{:.0f}".format(self.model.current_scan.scan_down_time))
+            #TODO - Remove these from current_scan and into ScanParms
+            self.scan_num_lineedit.setText(str(self.model.setup.scan_params.scan_id_from_data))
+            self.scan_timestamp_label.setText(self.model.setup.scan_params.time_stamp.strftime("%H:%M:%S"))
+            self.low_V_label.setText("{:.0f}".format(self.model.setup.scan_params.low_V))
+            self.high_V_label.setText("{:.0f}".format(self.model.setup.scan_params.high_V))
+            self.scan_up_time_label.setText("{:.0f}".format(self.model.setup.scan_params.scan_up_time))
+            self.scan_down_time_label.setText("{:.0f}".format(self.model.setup.scan_params.scan_down_time))
         else:
             self.scan_num_lineedit.setText("")
             self.scan_timestamp_label.setText("00:00:00")

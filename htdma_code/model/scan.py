@@ -64,10 +64,9 @@ MAX_PEAKS_TO_FIT = 5
 MIN_GOOD_WINDOW_SIZE = 5
 NUM_FIT_PASSES = 6
 
-
 class Scan:
     """
-    Scan encapsulates a single scan of data and its parameters
+    Scan encapsulates a single scan of data
 
     Attributes:
         -
@@ -80,8 +79,6 @@ class Scan:
         :param df: A data frame representing all row data for a single scan
         :param num_dp_values: number of dp values in the scan
         """
-        self.scan_id_from_data = int(df.columns[0])
-        self.time_stamp = df.iat[0,0]
 
         self.num_scan_rows = num_dp_values
 
@@ -94,23 +91,6 @@ class Scan:
         self.dp_range = self._df_data.index.to_numpy()
         self.log_dp_range = np.log(self.dp_range)
         self.raw_values = self._df_data.iloc[:,0].to_numpy()
-
-        # Extract out the other parameters
-        self.scan_up_time = float(df.iat[self.num_scan_rows + 1, 0])
-        self.scan_down_time = float(df.iat[self.num_scan_rows + 2, 0])
-        self.q_sh_lpm = float(df.iat[self.num_scan_rows + 6, 0])
-        self.q_aIn_lpm = float(df.iat[self.num_scan_rows + 7, 0])
-        self.q_aOut_lpm = float(df.iat[self.num_scan_rows + 8, 0])
-        self.low_V = float(df.iat[self.num_scan_rows + 10, 0])
-        self.high_V = float(df.iat[self.num_scan_rows + 11, 0])
-        self.status = df.iat[self.num_scan_rows + 16, 0]
-
-        # Validate the setup. Check whether the setup is symmetric or not
-        self.is_symmetric = True
-        self.q_excess_lpm = self.q_sh_lpm
-        if self.q_aIn_lpm != self.q_aOut_lpm:
-            self.is_symmetric = False
-            self.q_excess_lpm = self.q_sh_lpm + self.q_aIn_lpm - self.q_aOut_lpm
 
         # Preprocess / clean data to prepare for curve fit
         self._y_filtered, self._y_sel_good = self._filter_bad_values()
@@ -182,17 +162,8 @@ class Scan:
         return y_filtered, y_sel_good
 
     def __repr__(self):
-        s = "scan #: {}\n".format(self.scan_id_from_data)
-        s += "dp range: {}\n".format(repr(self.dp_range))
+        s = "dp range: {}\n".format(repr(self.dp_range))
         s += "values: {}\n".format(repr(self.raw_values))
-        s += "scan up (sec): {}\n".format(self.scan_up_time)
-        s += "scan down (sec): {}\n".format(self.scan_down_time)
-        s += "low V: {}\n".format(self.low_V)
-        s += "high V: {}\n".format(self.high_V)
-        s += "q_sh_lpm (lpm): {}\n".format(self.q_sh_lpm)
-        s += "q_aIn_lpm (polydisperse) (lpm): {}\n".format(self.q_aIn_lpm)
-        s += "q_aOut_lpm (monodisperse) (lpm): {}\n".format(self.q_aOut_lpm)
-        s += "STATUS: {}\n".format(self.status)
 
         return s
 

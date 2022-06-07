@@ -2,14 +2,14 @@
 
 import sys
 
+from PySide2 import QtWidgets
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-
-from htdma_code.model.model import Model
-
 mpl.use('Qt5Agg')
+#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from htdma_code.model.model import Model
 
 class DMA_1_Graph_Widget(FigureCanvasQTAgg):
 
@@ -31,8 +31,9 @@ class DMA_1_Graph_Widget(FigureCanvasQTAgg):
         # Create a new axes
         self.axes = self.fig.add_subplot(111)
 
-        # Update it from the model
-        self.model.dma1.plot(self.axes)
+        # Update it from the model, as long as we have a complete model!
+        if self.model.dma1:
+            self.model.dma1.plot(self.axes)
 
         # TODO - Not sure which if any of these draw methods are needed
         # self.draw_idle()

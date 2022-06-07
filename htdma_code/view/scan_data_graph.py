@@ -5,10 +5,11 @@ associated plot
 
 import sys
 
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 from htdma_code.model.model import Model
 

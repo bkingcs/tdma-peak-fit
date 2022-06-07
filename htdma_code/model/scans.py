@@ -2,11 +2,12 @@
 import numpy as np
 import pandas as pd
 
+import htdma_code.model.files.read_file_utils as read_file_utils
 from htdma_code.model.scan import Scan
 
-class Run:
+class Scans:
     """
-    The Run class
+    The Scans class
 
     This class encapsulates all scans in a given run. All scans are processed right from the raw data file
     and managed as a pandas DataFrame.
@@ -17,7 +18,7 @@ class Run:
         self.num_dp_values = 0
 
     def __repr__(self):
-        s = "Run:\n"
+        s = "Scans:\n"
         if self.df is not None:
             s += "  Index: {}\n".format(repr(self.df.index))
             s += "  Columns: {}\n".format(repr(self.df.columns))
@@ -31,22 +32,9 @@ class Run:
 
     def read_file(self, filename):
         """
-        Read in all the run_of_scans
+        Read in all the scans
         """
-        skiprows = 18
-        self.df = pd.read_csv(filename,
-                 header=0,
-                 sep='\t',
-                 index_col=0,
-                 skiprows=skiprows,
-                 encoding = "ISO-8859-1")
-        ts = pd.to_datetime(self.df.apply(lambda col: col["Date"] + " " + col["Start Time"], axis=0))
-        self.df.loc["Date", :] = ts
-        self.df = self.df.drop(index=["Start Time"])
-        self.df = self.df.drop(index=["Diameter Midpoint"])
-        i_start = np.where(self.df.index == "Date")[0][0]
-        i_end = np.where(self.df.index == "Scan Up Time(s)")[0][0]
-        self.num_dp_values = i_end - i_start - 1
+        (self.df, self.num_dp_values) = read_file_utils.read_scans(filename)
 
     def get_num_scans(self) -> int:
         """

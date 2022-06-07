@@ -3,8 +3,8 @@ import numpy as np
 import math
 from matplotlib.ticker import FormatStrFormatter
 
-from htdma_code.model.setup import Setup
-from htdma_code.model.run import Run
+from htdma_code.model.setupmods.setup import Setup
+from htdma_code.model.scans import Scans
 
 # ELEM_CHARGE is the elementary charge of a particle in Columb.
 # Coulumb is in m-kg-sec, so multiply by 1e5 to get in our cm-g-sec
@@ -41,12 +41,13 @@ class DMA_1:
     """
     DEFAULT_VOLTAGE = 5000.0
 
-    def __init__(self, debug=False):
+    def __init__(self, setup: Setup, debug=False):
         """
         Initialize a DMA_1 object with some default settings based on the popular TSI 3080 DMA
 
         """
-        self.setup = Setup()
+
+        self.setup = setup
 
         if debug:
             # MF-DMA settings
@@ -65,16 +66,16 @@ class DMA_1:
             self.q_excess_lpm = 10.0
 
             # Enter values in setup since the rest grabs the values from there
-            self.setup.dma_1.length_cm = 44.44
-            self.setup.dma_1.radius_in_cm = 0.937
-            self.setup.dma_1.radius_out_cm = 1.958
-            self.setup.params.mean_free_path_m = 68 * 1e-9
-            self.setup.params.mu_gas_viscosity_Pa_sec = 0.0001837 * 1e-1
+            self.setup.dma_1_params.length_cm = 44.44
+            self.setup.dma_1_params.radius_in_cm = 0.937
+            self.setup.dma_1_params.radius_out_cm = 1.958
+            self.setup.run_params.mean_free_path_m = 68 * 1e-9
+            self.setup.run_params.mu_gas_viscosity_Pa_sec = 0.0001837 * 1e-1
         else:
-            self.q_sh_lpm = 0.0
-            self.q_aIn_lpm = 0.0
-            self.q_aOut_lpm = 0.0
-            self.q_excess_lpm = 0.0
+            self.q_sh_lpm = self.setup.scan_params.q_sh_lpm
+            self.q_aIn_lpm = self.setup.scan_params.q_aIn_lpm
+            self.q_aOut_lpm = self.setup.scan_params.q_aOut_lpm
+            self.q_excess_lpm = self.setup.scan_params.q_excess_lpm
 
         # Create some internal private variables for computation purposes
         self._q_sh_cm3_sec = lpm_to_cm3_per_sec(self.q_sh_lpm)
@@ -83,10 +84,10 @@ class DMA_1:
         self._q_excess_cm3_sec = lpm_to_cm3_per_sec(self.q_excess_lpm)
 
         # 1 P = 10 Pa * s
-        self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 1e1
+        self.mu_gas_viscosity_poise = self.setup.run_params.mu_gas_viscosity_Pa_sec * 1e1
 
         # We want nanometers from meters
-        self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
+        self.mean_free_path_nm = self.setup.run_params.mean_free_path_m * 1e9
 
         # Other parameters that need to be set by the user
         self.voltage = self.DEFAULT_VOLTAGE
@@ -101,6 +102,10 @@ class DMA_1:
         self.dp_center = None
         self.dp_left_bottom = None
         self.dp_right_bottom = None
+
+        # Update the dp values
+        self._compute_theoretical_dist()
+
 
     def __repr__(self):
         s = "q_sh_lineedit = {:.1f} lpm {:.2f} cm3/sec\n".format(self.q_sh_lpm,self._q_sh_cm3_sec)
@@ -118,21 +123,20 @@ class DMA_1:
         else:
             s += "No voltage_lineedit set\n"
         s += "WILL USE:\n"
-        s += "dma1 length: {:.3f} cm\n".format(self.setup.dma_1.length_cm)
-        s += "dma1 radius In {:.3f} cm\n".format(self.setup.dma_1.radius_in_cm)
-        s += "dma1 radius Out {:.3f} cm\n".format(self.setup.dma_1.radius_out_cm)
+        s += "dma1 length: {:.3f} cm\n".format(self.setup.dma_1_params.length_cm)
+        s += "dma1 radius In {:.3f} cm\n".format(self.setup.dma_1_params.radius_in_cm)
+        s += "dma1 radius Out {:.3f} cm\n".format(self.setup.dma_1_params.radius_out_cm)
 
         return s
 
-    def update_from_setup_and_run(self, setup: Setup, run_of_scans: Run):
+    def update_from_setup(self, setup: Setup):
         self.setup = setup
-        scan = run_of_scans.get_scan(0)
 
         # We're copying these over for simplicity purposes
-        self.q_sh_lpm = scan.q_sh_lpm
-        self.q_aIn_lpm = scan.q_aIn_lpm
-        self.q_aOut_lpm = scan.q_aOut_lpm
-        self.q_excess_lpm = scan.q_excess_lpm
+        self.q_sh_lpm = self.setup.scan_params.q_sh_lpm
+        self.q_aIn_lpm = self.setup.scan_params.q_aIn_lpm
+        self.q_aOut_lpm = self.setup.scan_params.q_aOut_lpm
+        self.q_excess_lpm = self.setup.scan_params.q_excess_lpm
 
         # Create some internal private variables for computation purposes
         self._q_sh_cm3_sec = lpm_to_cm3_per_sec(self.q_sh_lpm)
@@ -141,17 +145,16 @@ class DMA_1:
         self._q_excess_cm3_sec = lpm_to_cm3_per_sec(self.q_excess_lpm)
 
         # 1 P = 10 Pa * s
-        self.mu_gas_viscosity_poise = self.setup.params.mu_gas_viscosity_Pa_sec * 1e1
+        self.mu_gas_viscosity_poise = self.setup.run_params.mu_gas_viscosity_Pa_sec * 1e1
 
         # We want nanometers from meters
-        self.mean_free_path_nm = self.setup.params.mean_free_path_m * 1e9
+        self.mean_free_path_nm = self.setup.run_params.mean_free_path_m * 1e9
 
         # dp distribution is computed
         self._compute_theoretical_dist()
         # self.dp_center = None
         # self.dp_left_bottom = None
         # self.dp_right_bottom = None
-
 
     def update_voltage(self, v: float):
         """
@@ -214,7 +217,7 @@ class DMA_1:
 
         :return: (Zp, full_width_half_height)
         """
-        delta_axial = (self.setup.dma_1.length_cm * self.voltage) / np.log(self.setup.dma_1.radius_out_cm/self.setup.dma_1.radius_in_cm)
+        delta_axial = (self.setup.dma_1_params.length_cm * self.voltage) / np.log(self.setup.dma_1_params.radius_out_cm / self.setup.dma_1_params.radius_in_cm)
         # delta_axial = (DMA_Length_cm * V) / np.log(Radius_outer_cm/Radius_inner_cm)
         Zp_center  = (self._q_sh_cm3_sec + self._q_excess_cm3_sec) / (4 * math.pi * delta_axial)
         Zp_fwhh    = (self._q_aIn_cm3_sec + self._q_aOut_cm3_sec) / (self._q_sh_cm3_sec + self._q_excess_cm3_sec) * Zp_center
