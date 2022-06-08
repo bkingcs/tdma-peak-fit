@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         # Set up the menu for the application
         self.create_menu()
 
-        # Create ALL of the fields that will be managed by this view and connected
+        # Create all of the fields that will be managed by this view and connected
         # to the model
         self.create_view_fields()
 
@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
         to the model.
         """
         self.run_name_lineedit = QLineEdit()
-        self.run_name_lineedit.setText("HTDMA test")
+        self.run_name_lineedit.setText("-- not loaded --")
         self.run_name_lineedit.setEnabled(False)
 
         self.q_sh_lineedit = QLineEdit()

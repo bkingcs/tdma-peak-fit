@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.stattools import durbin_watson
 import scipy
+import scipy.signal
+import scipy.optimize
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -62,7 +64,7 @@ fit_functions = [_1gaussian,
 # Constants
 MAX_PEAKS_TO_FIT = 5
 MIN_GOOD_WINDOW_SIZE = 5
-NUM_FIT_PASSES = 6
+NUM_FIT_PASSES = 1
 
 class Scan:
     """
@@ -98,6 +100,7 @@ class Scan:
         self._y_weights = None
 
         # Parameters that are set by the fit function
+        self.num_peaks_found = None # Number of peaks found by find_peaks
         self.fit_params = None      # Model parameters found by curve fit
         self.fit_values = None      # Fitted values
         self.fit_residuals = None   # Residuals between fit and raw values
@@ -112,7 +115,7 @@ class Scan:
         #1) If < MIN_GOOD_WINDOW_SIZE sequential points are surrounded by 0 values, flatten them
         #2) Ignore the first and last channel values
 
-        :return: The fitlered values, and the boolean selection array indicating
+        :return: The filtered values, and the boolean selection array indicating
         where the values are good
         """
 
@@ -199,6 +202,7 @@ class Scan:
         self.fit_values
         self.fit_residuals
         self.fit_rmse
+        self.num_peaks_found
 
         TODO - add the ability to autodetect the number of peaks
         TODO - Improve the fitting to use weights
@@ -218,6 +222,7 @@ class Scan:
         # The y values are the *filtered* clean concentration values
         xdata = self.get_log_dp_range()
         ydata = self._y_filtered
+        xdata_width = xdata.max() - xdata.min()
 
         # TODO - delete this test
         # print("WARNING! Hard htdma_code filter log_dp < 4")
@@ -231,18 +236,51 @@ class Scan:
             print("Starting fit")
             print("xdata.shape = {}".format(xdata.shape))
             print("ydata.shape = {}".format(ydata.shape))
+            print("xdata_width = {}".format(xdata_width))
 
-        # Set up initial starting points for our parameters
-        # initial parameters to use
-        p0_init = [y_gt_zero.mean() * .5,
-                   xdata.mean(),
-                   (xdata.max() - xdata.min()) * 0.05]*num_peaks
-        bounds = ([y_gt_zero.mean() * 0.1,  # min amp
-                   xdata.min(),  # min mu
-                   (xdata.max() - xdata.min()) * 0.01] * num_peaks,  # min sd
-                  [y_gt_zero.max() * 2,  # max amp
-                   xdata.max(),  # max mu
-                   (xdata.max() - xdata.min()) * 0.2] * num_peaks)  # max sd
+
+        # i_pk = scipy.signal.find_peaks_cwt(ydata,
+        #                                    widths=range(3,10))
+        # DX = (np.max(x) - np.min(x)) / float(Npks)  # starting guess for component width
+        # guess = np.ravel([[x[i], y[i], DX] for i in i_pk])  # starting guess for (x, amp, width) for each component
+
+
+        i_pk, _ = scipy.signal.find_peaks(ydata,
+                                       distance=10,
+                                       width=1,
+                                       prominence=ydata.max()/20)
+
+        self.num_peaks_found = len(i_pk)
+
+        if verbose:
+            print("find_peaks found {} peaks".format(len(i_pk)))
+
+        # Sort the peak from highest to lowest
+        i_pk = sorted(i_pk,key = lambda x : ydata[x],reverse=True)
+
+        p0_init = []
+        min_bounds = []
+        max_bounds = []
+        for i in range(len(i_pk)):
+            if i == num_peaks:
+                break
+
+            init_amp = ydata[i_pk[i]]
+            min_amp = init_amp * 0.1
+            max_amp = init_amp * 1.5
+
+            init_mu = xdata[i_pk[i]]
+            min_mu = init_mu - xdata_width * 0.05
+            max_mu = init_mu + xdata_width * 0.05
+
+            init_sd = xdata_width * 0.05
+            min_sd = xdata_width * 0.01
+            max_sd = xdata_width * 0.1
+
+            p0_init = p0_init + [init_amp,init_mu,init_sd]
+            min_bounds = min_bounds + [min_amp, min_mu, min_sd]
+            max_bounds = max_bounds + [max_amp, max_mu, max_sd]
+        bounds = (min_bounds, max_bounds)
 
         if num_peaks == 1:
             fit_func = _1gaussian
@@ -403,10 +441,12 @@ class Scan:
         if self.fit_values:
             ax_data.plot(xdata,self.fit_values, 'k--')
 
+            #y_fit = list(map(lambda x: fit_func(x, *popt), xdata))
+
             # Let's separate the peaks
             for peak in range(self.fit_num_peaks):
                 gauss_params = self.fit_params[peak*3:(peak+1)*3]
-                gauss_fit = _1gaussian(xdata, *gauss_params)
+                gauss_fit = _1gaussian(self.get_log_dp_range(), *gauss_params)
                 color = "gbmcy"[peak]
                 ax_data.plot(xdata,gauss_fit,color)
 
@@ -415,8 +455,8 @@ class Scan:
                      self.fit_residuals[np.logical_not(self._y_sel_good)],
                      "k.")
             ax_residuals.plot(xdata, np.zeros(xdata.shape[0]))
-            ax_residuals.set_xlabel("dp", fontsize=20)
-            ax_residuals.set_ylabel("residuals", fontsize=20)
+            ax_residuals.set_xlabel("dp", fontsize=15)
+            ax_residuals.set_ylabel("residuals", fontsize=15)
             ax_residuals.grid(True)
 
         ax_data.legend(loc="best")

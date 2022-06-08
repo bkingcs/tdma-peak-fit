@@ -17,9 +17,9 @@ class Setup:
         self.run_params: RunParams = None
         self.num_dp_values: int = 0
         self.df_raw_scan_data:pd.DataFrame = None
-        self.scan_params: ScanParams = None
 
-        # Keep track of the scan parameters we're showing
+        # Individual scan selected parameters
+        self.scan_params: ScanParams = None
         self._current_scan_index = 0
 
     def __repr__(self):
@@ -63,4 +63,5 @@ class Setup:
 
         :param new_scan_index: Index
         """
+        self._current_scan_index = new_scan_index
         self.scan_params = ScanParams(self.df_raw_scan_data, self._current_scan_index)
