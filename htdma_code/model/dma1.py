@@ -99,9 +99,9 @@ class DMA_1:
         self.n_ch = 1
 
         # dp distribution to be computed
-        self.dp_center = None
-        self.dp_left_bottom = None
-        self.dp_right_bottom = None
+        self.dp_dist_center = None
+        self.dp_dist_left_bottom = None
+        self.dp_dist_right_bottom = None
 
         # Update the dp values
         self._compute_theoretical_dist()
@@ -116,8 +116,8 @@ class DMA_1:
         s += "mean free path = {:.3f} nm\n".format(self.mean_free_path_nm)
         if self.voltage:
             s += "Voltage = {:.1f} V\n".format(self.voltage)
-            if self.dp_center:
-                s += "dp {:.1f} nm\n".format(self.dp_center)
+            if self.dp_dist_center:
+                s += "dp {:.1f} nm\n".format(self.dp_dist_center)
             else:
                 s += "dp not computed\n"
         else:
@@ -152,9 +152,9 @@ class DMA_1:
 
         # dp distribution is computed
         self._compute_theoretical_dist()
-        # self.dp_center = None
-        # self.dp_left_bottom = None
-        # self.dp_right_bottom = None
+        # self.dp_dist_center = None
+        # self.dp_dist_left_bottom = None
+        # self.dp_dist_right_bottom = None
 
     def update_voltage(self, v: float):
         """
@@ -167,9 +167,9 @@ class DMA_1:
             if self.q_aIn_lpm > 0 and self.q_sh_lpm > 0:
                 self._compute_theoretical_dist()
             else:
-                self.dp_center = None
-                self.dp_left_bottom = None
-                self.dp_right_bottom = None
+                self.dp_dist_center = None
+                self.dp_dist_left_bottom = None
+                self.dp_dist_right_bottom = None
 
     def _compute_theoretical_dist(self, verbose=False):
         """
@@ -198,16 +198,16 @@ class DMA_1:
         Cs = self.init_Cs  # Initial value for Cs
 
         # Now, compute the corresponding dp
-        self.dp_center = self._Zp_to_Dp(Zp, Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
+        self.dp_dist_center = self._Zp_to_Dp(Zp, Cs=self.init_Cs, n_ch=self.n_ch, verbose=verbose)
 
         if verbose:
-            print("Dp (init value of Cs = 2) = {}".format(self.dp_center))
+            print("Dp (init value of Cs = 2) = {}".format(self.dp_dist_center))
 
         # Compute the bottom points for the triangle. NOTE - electrical mobility
         # and dp have an inverse relationship. Thus, we are flipping these (i.e.
         # adding to the center to get the left, vice versa for right)
-        self.dp_left_bottom = self._Zp_to_Dp(Zp+Zp_fwhh,Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
-        self.dp_right_bottom = self._Zp_to_Dp(Zp-Zp_fwhh,Cs=self.init_Cs,n_ch=self.n_ch,verbose=verbose)
+        self.dp_dist_left_bottom = self._Zp_to_Dp(Zp + Zp_fwhh, Cs=self.init_Cs, n_ch=self.n_ch, verbose=verbose)
+        self.dp_dist_right_bottom = self._Zp_to_Dp(Zp - Zp_fwhh, Cs=self.init_Cs, n_ch=self.n_ch, verbose=verbose)
 
     def _compute_Zp(self):
         """
@@ -300,9 +300,9 @@ class DMA_1:
         Return the computed center dp. If it wasn't computed yet, then an exception
         is thrown
         """
-        if not self.dp_center:
+        if not self.dp_dist_center:
             raise ValueError("ERROR - dp not computed yet, or voltage_lineedit changed without computing new dp")
-        return self.dp_center
+        return self.dp_dist_center
 
     def plot(self, ax: plt.Axes):
         """
@@ -312,17 +312,17 @@ class DMA_1:
 
         """
 
-        x = [self.dp_left_bottom, self.dp_center, self.dp_right_bottom]
+        x = [self.dp_dist_left_bottom, self.dp_dist_center, self.dp_dist_right_bottom]
         y = [0, 1, 0]
 
         # TODO - Fix the center height
 
         ax.set_xscale('log')
-        if self.dp_center:
-            x_min = self.dp_center // 100 * 100 - 100
+        if self.dp_dist_center:
+            x_min = self.dp_dist_center // 100 * 100 - 100
             if x_min <= 0:
                 x_min = 5
-            x_max = self.dp_center // 100 * 100 + 200
+            x_max = self.dp_dist_center // 100 * 100 + 200
         else:
             # Default values if dp has not been calculated
             x_min = 300

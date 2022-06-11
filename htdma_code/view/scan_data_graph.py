@@ -5,15 +5,14 @@ associated plot
 
 import sys
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+mpl.use('Qt5Agg')
+#from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
 from htdma_code.model.model import Model
-
-mpl.use('Qt5Agg')
 
 class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
 

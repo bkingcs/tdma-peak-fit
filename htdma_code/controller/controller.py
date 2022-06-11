@@ -15,15 +15,15 @@ class Controller:
         self.main_view.file_open_action.triggered.connect(self.menu_file_open_action)
 
         # Voltage for dma 1
-        self.main_view.voltage_lineedit.returnPressed.connect(self.dma1_voltage_action)
-        self.main_view.voltage_slider.sliderReleased.connect(self.dma1_voltage_sliderReleased)
+        self.main_view.dma_1_form.voltage_lineedit.returnPressed.connect(self.dma1_voltage_action)
+        self.main_view.dma_1_form.voltage_slider.sliderReleased.connect(self.dma1_voltage_sliderReleased)
 
         # scan selections
-        self.main_view.prev_scan_button.clicked.connect(self.prev_scan_button_clicked)
-        self.main_view.next_scan_button.clicked.connect(self.next_scan_button_clicked)
+        self.main_view.scan_form.prev_scan_button.clicked.connect(self.prev_scan_button_clicked)
+        self.main_view.scan_form.next_scan_button.clicked.connect(self.next_scan_button_clicked)
 
         # Peak fitting
-        self.main_view.peak_fit_button.clicked.connect(self.peak_fit_button_clicked)
+        self.main_view.scan_form.peak_fit_button.clicked.connect(self.peak_fit_button_clicked)
 
     def menu_file_open_action(self):
         # """
@@ -80,5 +80,5 @@ class Controller:
         if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
         else:
-            self.model.current_scan.fit(num_peaks=self.main_view.scan_fit_num_peaks_spinbox.value())
+            self.model.current_scan.fit(num_peaks=self.main_view.scan_form.scan_fit_num_peaks_spinbox.value())
             self.main_view.update_scan_widget_views_from_model()

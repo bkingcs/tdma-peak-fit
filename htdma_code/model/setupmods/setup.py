@@ -1,3 +1,5 @@
+
+import os
 import pandas as pd
 
 import htdma_code.model.files.read_file_utils as read_file_utils
@@ -13,6 +15,7 @@ class Setup:
     def __init__(self):
         #self.dma_1_params = DMAParams()
         #self.run_params = RunParams()
+        self.basefilename = None
         self.dma_1_params: DMAParams = None
         self.run_params: RunParams = None
         self.num_dp_values: int = 0
@@ -34,6 +37,9 @@ class Setup:
         :param filename: a string representing the file to read in. Must be in a
                          readable text format
         """
+
+        # Get the name of the run
+        self.basefilename = os.path.basename(filename)
 
         # read in the general setup info for the run
         dict_setup_info = read_file_utils.read_setup(filename)

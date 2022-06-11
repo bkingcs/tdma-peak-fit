@@ -7,6 +7,7 @@ from PySide2 import QtWidgets
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 mpl.use('Qt5Agg')
+
 #from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from htdma_code.model.model import Model
