@@ -48,8 +48,6 @@ class Scan_Form(QFormLayout):
         # Curve fitting button
         self.peak_fit_button = Qw.QPushButton("Fit Peaks")
 
-
-
     def _add_widgets_to_form(self):
         # Start adding info
         self.addRow("Name", self.dma_2_name_label)

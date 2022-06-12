@@ -38,27 +38,29 @@ class Controller:
             self.status_bar.showMessage("Read in file {}".format(files[0]))
 
             # Update the view
-            print("calling main_view.update()")
-            self.main_view.update_dma1_widget_views_from_model()
-            self.main_view.update_scan_widget_views_from_model()
+            self.main_view.update_from_model()
+            # self.main_view.update_dma1_widget_views_from_model()
+            # self.main_view.update_scan_widget_views_from_model()
 
     def dma1_voltage_action(self):
         """
         User pressed enter on a new value for voltage for DMA 1. Thus, update the model, then update the entire
         display
         """
-        voltage = float(self.main_view.voltage_lineedit.text())
+        voltage = float(self.main_view.dma_1_form.voltage_lineedit.text())
         self.model.dma1.update_voltage(voltage)
+        self.main_view.update_from_model()
 
-        self.main_view.update_dma1_widget_views_from_model()
+        # self.main_view.update_dma1_widget_views_from_model()
 
     def dma1_voltage_sliderReleased(self):
         """
         User moved the slider to adjust the voltage
         """
-        voltage = self.main_view.voltage_slider.value()
+        voltage = self.main_view.dma_1_form.voltage_slider.value()
         self.model.dma1.update_voltage(voltage)
-        self.main_view.update_dma1_widget_views_from_model()
+        # self.main_view.update_dma1_widget_views_from_model()
+        self.main_view.update_from_model()
 
     def prev_scan_button_clicked(self):
         if not self.model.current_scan:
@@ -66,7 +68,8 @@ class Controller:
         elif not self.model.select_prev_sample_num():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
-            self.main_view.update_scan_widget_views_from_model()
+            # self.main_view.update_scan_widget_views_from_model()
+            self.main_view.update_from_model()
 
     def next_scan_button_clicked(self):
         if not self.model.current_scan:
@@ -74,11 +77,13 @@ class Controller:
         elif not self.model.select_next_scan_num():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
-            self.main_view.update_scan_widget_views_from_model()
+            # self.main_view.update_scan_widget_views_from_model()
+            self.main_view.update_from_model()
 
     def peak_fit_button_clicked(self):
         if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
         else:
             self.model.current_scan.fit(num_peaks=self.main_view.scan_form.scan_fit_num_peaks_spinbox.value())
-            self.main_view.update_scan_widget_views_from_model()
+            self.main_view.update_from_model()
+            # self.main_view.update_scan_widget_views_from_model()

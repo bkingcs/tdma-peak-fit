@@ -16,17 +16,15 @@ from htdma_code.model.model import Model
 
 class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, model: Model, parent=None, width=5, height=4, dpi=100):
         self.fig = plt.Figure(figsize=(width, height), dpi=dpi)
         self.gridspec = self.fig.add_gridspec(4,1)
         super(Scan_Data_Graph_Widget, self).__init__(self.fig)
 
+        self.model = model
         self.ax_data = None
         self.ax_residuals = None
-        self.model = None
 
-    def set_model(self, model: Model):
-        self.model = model
         self.update_plot()
 
     def update_plot(self):

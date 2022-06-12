@@ -14,14 +14,12 @@ from htdma_code.model.model import Model
 
 class DMA_1_Graph_Widget(FigureCanvasQTAgg):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, model: Model, parent=None, width=5, height=4, dpi=100):
         self.fig = plt.Figure(figsize=(width, height), dpi=dpi)
         self.axes = self.fig.add_subplot(111)
-        super(DMA_1_Graph_Widget, self).__init__(self.fig)
+        # super(DMA_1_Graph_Widget, self).__init__(self.fig)
+        super().__init__(self.fig)
 
-        self.model = None
-
-    def set_model(self, model: Model):
         self.model = model
         self.update_plot()
 
