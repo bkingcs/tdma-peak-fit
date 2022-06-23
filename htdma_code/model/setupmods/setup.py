@@ -52,6 +52,7 @@ class Setup:
                                       radius_out_cm=dict_setup_info["DMA_1_RADIUS_OUT_CM"]
         )
 
+        # The RH needs to be a user-defined setting in the program, so that will remain a default value
         self.run_params = RunParams(mu_gas_viscosity_Pa_sec=dict_setup_info["MU_GAS_VISCOSITY_Pa_Sec"],
                                    gas_density=dict_setup_info["GAS_DENSITY"],
                                    mean_free_path_m=dict_setup_info["MEAN_FREE_PATH_M"],
@@ -61,7 +62,8 @@ class Setup:
 
         # Always reset the current scan index back to 0 if we're reading in a new file
         self._current_scan_index = 0
-        self.scan_params = ScanParams(self.df_raw_scan_data, self._current_scan_index)
+        self.scan_params = ScanParams(self.df_raw_scan_data,
+                                      self._current_scan_index)
 
     def update_scan_params(self,new_scan_index):
         """

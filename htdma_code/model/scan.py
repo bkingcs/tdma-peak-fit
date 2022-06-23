@@ -14,13 +14,17 @@ I'm following lots of ideas online of basic gaussian curve fits
 - http://www.emilygraceripka.com/blog/16
 
 """
+from typing import List
 
 import numpy as np
 import pandas as pd
+from scipy.signal import peak_widths
 from statsmodels.stats.stattools import durbin_watson
 import scipy
 import scipy.signal
 import scipy.optimize
+
+from PySide2.QtGui import QStandardItemModel, QStandardItem
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -66,6 +70,71 @@ MAX_PEAKS_TO_FIT = 5
 MIN_GOOD_WINDOW_SIZE = 5
 NUM_FIT_PASSES = 1
 
+class PeakFitResult:
+    """
+    Encapsulate results from each peak identified in the scan
+
+        index = the index of the peak
+        dp = center of gaussian (diameter)
+        sd = standard deviation of gaussian
+        height = amplitude of gaussian
+        fwhh = full width half height of gaussian
+        growth_factor = growth factor from dp of dma 1
+        kappa = computed from growth factor
+        fit_params = parameters identified for best fit for this single Gaussian
+    """
+    def __init__(self):
+        self.index = None
+        self.dp = None
+        self.sd = None
+        self.height = None
+        self.fwhh = None    # 2.3548 * sigma
+        self.growth_factor = None
+        self.kappa = None
+        self.fit_params = None
+
+    def __repr__(self):
+        s = str(self.index) + ":\n"
+        s = s + "  dp:     {:.3f}\n".format(self.dp)
+        s = s + "  sd:     {:.3f}\n".format(self.sd)
+        s = s + "  height: {:.3f}\n".format(self.height)
+        s = s + "  fwhh:   {:.3f}\n".format(self.fwhh)
+        s = s + "  gf:     {:.3f}\n".format(self.growth_factor)
+        s = s + "  kappa:  {:.3f}\n".format(self.kappa)
+        return s
+
+class TotalFitResult:
+    """
+    Encapsulate all results for the total fit of the scan
+
+        predicted_peak_indices = list of initial peak indicies
+        num_peaks = number of peaks fitted
+        fit_params = actual list of all of the parameters optimized for the fit
+        fit_values = the actual fitted values
+        residuals = the residuals (raw - fit)
+        residuals_smoothed = residuals with moving average (for peak finding)
+        residual_peak_indices = the indices of the peaks identified in the residual curve
+        residuals_mean = the mean of the residuals (should be ~0)
+        rmse = the root mean square error of the fit
+        durbin_watson = statistic to assess independence of residual values [0-4, 2 is best]
+    """
+    def __init__(self):
+        self.predicted_peak_indices = None
+        self.num_peaks = None
+        self.fit_params = None
+        self.fit_values = None
+        self.residuals = None
+        self.residuals_smoothed = None
+        self.residuals_mean = None
+        self.rmse = None
+        self.durbin_watson = None
+
+
+    def __repr__(self):
+        s = "rmse: {:.3f}\n".format(self.rmse)
+        s = s + "Durbin-Watson: {:.3f}".format(self.durbin_watson)
+        return s
+
 class Scan:
     """
     Scan encapsulates a single scan of data
@@ -100,12 +169,13 @@ class Scan:
         self._y_weights = None
 
         # Parameters that are set by the fit function
-        self.num_peaks_found = None # Number of peaks found by find_peaks
-        self.fit_params = None      # Model parameters found by curve fit
-        self.fit_values = None      # Fitted values
-        self.fit_residuals = None   # Residuals between fit and raw values
-        self.fit_rmse = None        # RMSE
-        self.fit_num_peaks = None   # The number of peaks identified for best fit
+        self.num_peaks_predicted = None # Number of peaks found by find_peaks
+
+        self.total_fit_result: TotalFitResult = None
+        self.peak_fit_results: List[PeakFitResult] = None
+
+        # self.peaks_item_model = QStandardItemModel()
+        # x = self.peaks_item_model.item(2,3)
 
     def _filter_bad_values(self):
         """
@@ -193,44 +263,39 @@ class Scan:
         """
         return self.raw_values
 
-    def fit(self,num_peaks,verbose = False, plot_steps = False, ax_data = None, ax_residuals = None):
+    def fit(self, num_peaks_desired, verbose = False, plot_steps = False, plot_func = None):
         """
         This is the mother function that performs the curve fit. The results of the fit
-        are stored in this class. Specifically:
+        are stored in two separate classes:
 
-        self.fit_params
-        self.fit_values
-        self.fit_residuals
-        self.fit_rmse
-        self.num_peaks_found
+        self.peak_fit_results --> list of PeakFitResult objects
+        self.total_fit_result --> TotalFitResult
+        self.num_peaks_predicted --> number of peaks predicted by peak finding scipy method
 
-        TODO - add the ability to autodetect the number of peaks
         TODO - Improve the fitting to use weights
 
-        :param num_peaks: For the time, the user must specify the number of peaks
+        :param num_peaks_desired: For the time, the user must specify the number of peaks
         expected in the data.
         :param verbose: print out info while doing the fit?
         :param plot_steps: plot the fit after each step?
-        :return: Nothing. All values are stored in the object, including
+        :param plot_func: Sadly necessary to prevent circular import
+        #TODO Remove the plot_func once fully tested!
 
+        :return: Nothing. All values are stored in this object
         """
 
-        if num_peaks > MAX_PEAKS_TO_FIT:
-            raise ValueError("fit - num_peaks = {} exceeds max allowed {}".format(num_peaks,MAX_PEAKS_TO_FIT))
+        if num_peaks_desired > MAX_PEAKS_TO_FIT:
+            raise ValueError("fit - num_peaks_desired = {} exceeds max allowed {}".format(num_peaks_desired, MAX_PEAKS_TO_FIT))
 
         # The x values (i.e. predictors are the log dp values
         # The y values are the *filtered* clean concentration values
         xdata = self.get_log_dp_range()
         ydata = self._y_filtered
+        ydata_smoothed = calc_moving_ave(ydata,3)
         xdata_width = xdata.max() - xdata.min()
 
-        # TODO - delete this test
-        # print("WARNING! Hard htdma_code filter log_dp < 4")
-        # sel = xdata < 4.0
-        # ydata[sel] = 0.0
-
-        y_gt_zero = ydata[(self._y_sel_good) & (ydata > 0)]
-        #self.fit_weights = np.asarray([0.01 for _ in ydata])
+        # y_gt_zero = ydata[(self._y_sel_good) & (ydata > 0)]
+        # self.fit_weights = np.asarray([0.01 for _ in ydata])
 
         if verbose:
             print("Starting fit")
@@ -238,117 +303,103 @@ class Scan:
             print("ydata.shape = {}".format(ydata.shape))
             print("xdata_width = {}".format(xdata_width))
 
+        # Obtain a list of the indices of the peaks we expect to find in the data
+        i_peaks = predict_peaks(ydata_smoothed, is_scan=True, verbose=verbose)
+        self.num_peaks_predicted = len(i_peaks)
 
-        # i_pk = scipy.signal.find_peaks_cwt(ydata,
-        #                                    widths=range(3,10))
-        # DX = (np.max(x) - np.min(x)) / float(Npks)  # starting guess for component width
-        # guess = np.ravel([[x[i], y[i], DX] for i in i_pk])  # starting guess for (x, amp, width) for each component
-
-
-        i_pk, _ = scipy.signal.find_peaks(ydata,
-                                       distance=10,
-                                       width=1,
-                                       prominence=ydata.max()/20)
-
-        self.num_peaks_found = len(i_pk)
-
-        if verbose:
-            print("find_peaks found {} peaks".format(len(i_pk)))
-
-        # Sort the peak from highest to lowest
-        i_pk = sorted(i_pk,key = lambda x : ydata[x],reverse=True)
-
+        # Now, go through each identified peak and use it to identify some good starting points for curve fitting the
+        # gaussian
         p0_init = []
         min_bounds = []
         max_bounds = []
-        for i in range(len(i_pk)):
-            if i == num_peaks:
-                break
-
-            init_amp = ydata[i_pk[i]]
+        for i in range(len(i_peaks)):
+            init_amp = ydata[i_peaks[i]]
             min_amp = init_amp * 0.1
             max_amp = init_amp * 1.5
 
-            init_mu = xdata[i_pk[i]]
+            init_mu = xdata[i_peaks[i]]
             min_mu = init_mu - xdata_width * 0.05
             max_mu = init_mu + xdata_width * 0.05
 
             init_sd = xdata_width * 0.05
             min_sd = xdata_width * 0.01
-            max_sd = xdata_width * 0.1
+            max_sd = xdata_width * 0.20
 
             p0_init = p0_init + [init_amp,init_mu,init_sd]
             min_bounds = min_bounds + [min_amp, min_mu, min_sd]
             max_bounds = max_bounds + [max_amp, max_mu, max_sd]
+            if i + 1 == num_peaks_desired:
+                break
         bounds = (min_bounds, max_bounds)
 
-        if num_peaks == 1:
-            fit_func = _1gaussian
-        elif num_peaks == 2:
-            fit_func = _2gaussian
-        elif num_peaks == 3:
-            fit_func = _3gaussian
-        elif num_peaks == 4:
-            fit_func = _4gaussian
-        elif num_peaks == 5:
-            fit_func = _5gaussian
-
-        if verbose:
-            for peak in range(num_peaks):
-                print("p0_init = {}".format(p0_init[peak*3:(peak+1)*3]))
-                print("min bounds = {}".format(bounds[0][peak*3:(peak+1)*3]))
-                print("max bounds = {}".format(bounds[1][peak*3:(peak+1)*3]))
+        num_peaks_predicting = len(i_peaks)
+        if num_peaks_predicting > num_peaks_desired:
+            num_peaks_predicting = num_peaks_desired
 
         # Start with selecting all data
         sel = [True for i in range(xdata.shape[0])]
 
-        for step in range(NUM_FIT_PASSES):
+        is_done = False
+        while not is_done:
 
+            fit_func = self.get_gaussian_fit_func(num_peaks_predicting)
+
+            if verbose:
+                for peak in range(num_peaks_predicting):
+                    print("p0_init = {}".format(p0_init[peak * 3:(peak + 1) * 3]))
+                    print("min bounds = {}".format(bounds[0][peak * 3:(peak + 1) * 3]))
+                    print("max bounds = {}".format(bounds[1][peak * 3:(peak + 1) * 3]))
+
+            # Fit the desired number of peaks for this pass
             popt, pcov = scipy.optimize.curve_fit(
                 fit_func,
                 xdata[sel],
-                ydata[sel],
+                ydata_smoothed[sel],
                 p0=p0_init,
                 bounds=bounds
             )
             # perr_gauss = np.sqrt(np.diag(pcov_gauss))
 
+            # Create the peak results object
             if verbose:
-                print("Pass {} : parameters:".format(step + 1))
-                for peak in range(num_peaks):
-                    print("Peak: {}".format(peak+1))
-                    params = popt[peak*3:(peak+1)*3]
-                    print("amp: {:.1f}".format(params[0]))
-                    print("mu: {:.3f}".format(params[1]))
-                    print("sd: {:.3f}".format(params[2]))
+                print("Predicting {} : parameters:".format(num_peaks_predicting))
 
-            # Generate fit data
-            y_fit = list(map(lambda x: fit_func(x, *popt), xdata))
-
-            # Store the fit values and their residuals
-            self.fit_num_peaks = num_peaks
-            self.fit_params = popt
-            self.fit_values = y_fit
-            self.fit_residuals = ydata - y_fit
-            self.fit_rmse = np.sqrt(np.sum(self.fit_residuals[self._y_sel_good] *
-                                           self.fit_residuals[self._y_sel_good]))
-
-            dw = durbin_watson(self.fit_residuals)
-
-            # Compute the RMSE near peaks
-            sel_near_peak = [False for i in range(xdata.shape[0])]
-            for peak in range(num_peaks):
-                params = popt[peak * 3:(peak + 1) * 3]
-                sel_near_peak |= (xdata > params[1] - params[2]) & (xdata < params[1] + params[2])
+            self.peak_fit_results = list()
+            for i_peak in range(num_peaks_predicting):
+                peak_fit_result = PeakFitResult()
+                params = popt[i_peak * 3:(i_peak + 1) * 3]
+                peak_fit_result.fit_params = params
+                peak_fit_result.index = i_peak
+                peak_fit_result.dp = np.exp(params[1])
+                peak_fit_result.height = params[0]
+                peak_fit_result.sd = np.exp(params[1] + params[2]) - peak_fit_result.dp  #TODO Verify this - this may not be right
+                peak_fit_result.fwhh = peak_fit_result.sd * 2.3548 #TODO - Verify this - it may not be right
+                peak_fit_result.growth_factor = 0 #TODO Finish growth factor calculation!
+                peak_fit_result.kappa = 0 #TODO Finish kappa calculation!
+                self.peak_fit_results.append(peak_fit_result)
                 if verbose:
-                    print(sel_near_peak)
+                    print(repr(peak_fit_result))
 
-            self.fit_rmse_near_peaks = np.sqrt(np.sum(self.fit_residuals[sel_near_peak] * self.fit_residuals[sel_near_peak]))
+            self.total_fit_result = TotalFitResult()
+            self.total_fit_result.predicted_peak_indices = i_peaks
+            self.total_fit_result.num_peaks = num_peaks_desired
+            self.total_fit_result.fit_params = popt
+            self.total_fit_result.fit_values = list(map(lambda x: fit_func(x, *popt), xdata))
+            self.total_fit_result.residuals = ydata - self.total_fit_result.fit_values
+            self.total_fit_result.residuals_smoothed = calc_moving_ave(self.total_fit_result.residuals,3)
+            # The indices of residual peaks is a lag value from the previous pass!
+            self.total_fit_result.rmse = np.sqrt(np.sum(self.total_fit_result.residuals[self._y_sel_good] *
+                                                        self.total_fit_result.residuals[self._y_sel_good]))
+            # Durbin-Watson - a good test of fitness, measures the independence of the
+            # residuals, or more specifically, there is no serial correlation.
+            # Range is 0-4. A value of 2 is ideal
+            self.total_fit_result.durbin_watson = durbin_watson(self.total_fit_result.residuals)
+
+            # Compute E(residuals) i.e. the mean should be 0
+            self.total_fit_result.residuals_mean = np.mean(self.total_fit_result.residuals)
 
             if verbose:
-                print("RMSE = {}".format(self.fit_rmse))
-                print("Durbin-Watson = {}".format(dw))
-                print("narrow RMSE = {}".format(self.fit_rmse_near_peaks))
+                print(repr(self.total_fit_result))
 
             if plot_steps:
                 if verbose:
@@ -361,106 +412,210 @@ class Scan:
 
                 ax_data = self.fig.add_subplot(self.gridspec[0:3, 0])
                 ax_residuals = self.fig.add_subplot(self.gridspec[3, 0],
-                                                             sharex=ax_data)
+                                                    sharex=ax_data)
 
-                self.plot(ax_data=ax_data,ax_residuals=ax_residuals)
+                plot_func(self,ax_data=ax_data,ax_residuals=ax_residuals)
                 ax_data.annotate('test label',
-                            xy=(0.1, 0.8), xycoords='figure fraction', fontsize=15)
+                                 xy=(0.1, 0.8), xycoords='figure fraction', fontsize=15)
                 ax_data.text(100, 1000, r'$\mu=100,\ \sigma=15$')
                 plt.show()
 
+            if num_peaks_predicting < num_peaks_desired:
+                # If the user actually wants more peaks than were identified, then
+                # lets use the residual curve to determine ideal locations
+                i_residual_peaks = predict_peaks(self.total_fit_result.residuals_smoothed,
+                                                 is_scan=False,
+                                                 verbose=verbose)
+
+                # Sometimes the residual can measure a large at the tails of
+                # the gaussian, when the acutal data is zero
+                is_good_peak = False
+                for i_pk in i_residual_peaks:
+                    if ydata[i_pk] > 0:
+                        is_good_peak = True
+                        break
+
+                # IF there were peaks identified, let's use them!
+                if is_good_peak:
+                    init_amp = ydata[i_pk]
+                    min_amp = init_amp * 0.1
+                    max_amp = init_amp * 1.5
+
+                    init_mu = xdata[i_pk]
+                    min_mu = init_mu - xdata_width * 0.2
+                    max_mu = init_mu + xdata_width * 0.2
+
+                    init_sd = xdata_width * 0.05
+                    min_sd = xdata_width * 0.01
+                    max_sd = xdata_width * 0.20
+
+                    p0_init = p0_init + [init_amp, init_mu, init_sd]
+                    min_bounds = min_bounds + [min_amp, min_mu, min_sd]
+                    max_bounds = max_bounds + [max_amp, max_mu, max_sd]
+                    bounds = (min_bounds, max_bounds)
+
+                else:
+                    print("CRAP! Sorry! Could not find additional peaks!")
+                    init_amp = ydata[i_peaks[0]]
+                    min_amp = init_amp * 0.05
+                    max_amp = init_amp * 1.5
+
+                    init_mu = xdata[i_peaks[0]]
+                    min_mu = xdata[0]
+                    max_mu = xdata[-1]
+
+                    init_sd = xdata_width * 0.05
+                    min_sd = xdata_width * 0.01
+                    max_sd = xdata_width * 0.25
+
+                    p0_init = p0_init + [init_amp, init_mu, init_sd]
+                    min_bounds = min_bounds + [min_amp, min_mu, min_sd]
+                    max_bounds = max_bounds + [max_amp, max_mu, max_sd]
+                    bounds = (min_bounds, max_bounds)
+
+                num_peaks_predicting = num_peaks_predicting + 1
+            else:
+                is_done = True
             # Now, this is the tricky part. Here, we carefully narrow in on the correct
             # gaussians by eliminating data that is outside of some fraction of standard
             # deviations for each curve
-            sel = [False for i in range(xdata.shape[0])]
+            # sel = [False for i in range(xdata.shape[0])]
 
             # For each peak select the data around it to use for the next iteration
-            for peak in range(num_peaks):
-                x_mean_est = popt[peak * 3 + 1]
-                x_sd_est = popt[peak * 3 + 2]
-
-                # Now, we need to determine how much data around the sd we want
-#                x_sd_factor = 1
-                x_sd_factor = 2 / (step + 1)
-
-                # Find the min and max around the mean, and select that data for next iteration
-                min_x = x_mean_est - x_sd_est * x_sd_factor
-                max_x = x_mean_est + x_sd_est * x_sd_factor
-                sel_peak = (xdata >= min_x) & (xdata <= max_x)
-
-                # Select it!
-                sel = sel | sel_peak
+            # for peak in range(num_peaks_predicting):
+            #     x_mean_est = popt[peak * 3 + 1]
+            #     x_sd_est = popt[peak * 3 + 2]
+            #
+            #     # Now, we need to determine how much data around the sd we want
+            #     #                x_sd_factor = 1
+            #     x_sd_factor = 2 / (step + 1)
+            #
+            #     # Find the min and max around the mean, and select that data for next iteration
+            #     min_x = x_mean_est - x_sd_est * x_sd_factor
+            #     max_x = x_mean_est + x_sd_est * x_sd_factor
+            #     sel_peak = (xdata >= min_x) & (xdata <= max_x)
+            #
+            #     # Select it!
+            #     sel = sel | sel_peak
 
             # Set the new parameters
-            p0_init = popt
+            # p0_init = popt
+
+        # Compute the RMSE near peaks
+        # sel_near_peak = [False for i in range(xdata.shape[0])]
+        # for peak in range(num_peaks_desired):
+        #     params = popt[peak * 3:(peak + 1) * 3]
+        #     sel_near_peak |= (xdata > params[1] - params[2]) & (xdata < params[1] + params[2])
+        #     if verbose:
+        #         print(sel_near_peak)
+        #
+        # self.fit_rmse_near_peaks = np.sqrt(np.sum(self.fit_residuals[sel_near_peak] * self.fit_residuals[sel_near_peak]))
+        #
+        # if verbose:
+        #     print("RMSE = {}".format(self.fit_result_rmse))
+        #     print("Durbin-Watson = {}".format(dw))
+        #     print("narrow RMSE = {}".format(self.fit_rmse_near_peaks))
 
         # return popt, pcov
         return
 
-    def get_fit_peak_dp(self):
-        """
-        :return:         Return a list of the fitted dp values
-        """
-        print(self.fit_num_peaks)
-        sel = np.array(list(range(1,1+3*(self.fit_num_peaks-1)+1,3)))
-        x = np.exp(self.fit_params[sel])
-        return x
+    def get_gaussian_fit_func(self, num_peaks):
+        if num_peaks == 1:
+            fit_func = _1gaussian
+        elif num_peaks == 2:
+            fit_func = _2gaussian
+        elif num_peaks == 3:
+            fit_func = _3gaussian
+        elif num_peaks == 4:
+            fit_func = _4gaussian
+        elif num_peaks == 5:
+            fit_func = _5gaussian
+        return fit_func
 
 
-    def plot(self, ax_data: plt.Axes, ax_residuals: plt.Axes):
-        """
-        Create a plot of the raw data and fitted data in ax_data,
-        and the residuals resulting from the fit in ax_residuals. If the user
-        does not want to plot residuals, OR if a fit has not been completed,
-        then the residuals are not plotted
+    # def get_fit_peak_dp(self):
+    #     """
+    #     :return:         Return a list of the fitted dp values
+    #     """
+    #     sel = np.array(list(range(1,1+3*(self.fit_num_peaks-1)+1,3)))
+    #     x = np.exp(self.fit_peak_params[sel])
+    #     return x
 
-        :param ax_data: The Axes object to plot the data in
-        :param ax_residuals: The Axes object to plot the residuals in, or None
-        if no residuals are plotted.
-        """
 
-        # fig = plt.figure(figsize=(10,8))
-        # ax = fig.add_gridspec(4,1)
-        # ax_data = fig.add_subplot(ax[0:3,0])
-        # ax_residuals = fig.add_subplot(ax[3,0])
+def calc_moving_ave(x, w: int):
+    """
+    Compute the moving average of a series
 
-        #xdata = self.get_log_dp_range()
-        xdata = self.get_dp_range()
-        ydata = self.get_values()
+    :param x: The data
+    :param w: The window size for computing the average
 
-        # Plot actual data
-        ax_data.plot(xdata,ydata, "ro")
-        #ax_data.set_ylabel("conc",family="serif",  fontsize=12)
-        ax_data.set_ylabel("conc", fontsize=20)
-        ax_data.grid(True)
-        ax_data.set_xscale("log")
-        ax_data.set_xticks([10,50] + list(range(100,1000,100)))
-        ax_data.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
+    :returns: The moving averaged x using a windows size of w, padded
+              with zeros to make it the same length
+    """
 
-        # Plot the curve fit... if a fit was completed
-        if self.fit_values:
-            ax_data.plot(xdata,self.fit_values, 'k--')
+    if w % 2 == 0:
+        raise ValueError("calc_moving_ave parameter w must be odd")
 
-            #y_fit = list(map(lambda x: fit_func(x, *popt), xdata))
+    x = np.convolve(x, np.ones(3), 'valid') / w
+    pad = (w-1) // 2
+    x = np.append(np.zeros(pad), x)
+    x = np.append(x, np.zeros(pad))
+    return x
 
-            # Let's separate the peaks
-            for peak in range(self.fit_num_peaks):
-                gauss_params = self.fit_params[peak*3:(peak+1)*3]
-                gauss_fit = _1gaussian(self.get_log_dp_range(), *gauss_params)
-                color = "gbmcy"[peak]
-                ax_data.plot(xdata,gauss_fit,color)
 
-            ax_residuals.plot(xdata[self._y_sel_good], self.fit_residuals[self._y_sel_good], "bo")
-            ax_residuals.plot(xdata[np.logical_not(self._y_sel_good)],
-                     self.fit_residuals[np.logical_not(self._y_sel_good)],
-                     "k.")
-            ax_residuals.plot(xdata, np.zeros(xdata.shape[0]))
-            ax_residuals.set_xlabel("dp", fontsize=15)
-            ax_residuals.set_ylabel("residuals", fontsize=15)
-            ax_residuals.grid(True)
+def predict_peaks(ydata, is_scan: bool, verbose=False):
+    """
+    Given a signal, predict the indices of the peaks. The hard work of this method is
+    done by `scipy.signal.find_peaks`.
 
-        ax_data.legend(loc="best")
+    :param ydata: the data (either scan or residual)
+    :param is_scan: Is this scan data or residual data?
+    :param verbose: [Optional, default=False] do we output some debug info while working?
+    :returns: a list of indicies locating where the peaks in the signal are, sorted from the
+    strongest peak to the weakest
+    """
 
-        # fig.tight_layout()
-        #
-        # return fig, ax
+    # ydata = np.convolve(ydata, np.ones(3), 'valid') / 3
+    # ydata = np.append([0], ydata)
+    # ydata = np.append(ydata, [0])
+
+    # Vertical distance of the peak to neighbor samples
+    threshold = (0, (ydata.max() - ydata.min()) / 4)
+    # distance to neighbor peaks in samples
+    distance = 10
+    # width of the peak in samples
+    width = 1
+    # Relative height at which width is measured as a percentage of
+    # its prominence
+    rel_height = 0.2
+    # prominence of the peak
+    # - how much a peak stands out from the surrounding baseline
+    #   of the signal and is defined as the vertical distance between
+    #   the peak and its lowest contour line
+    prominence = ((ydata.max() - ydata.min()) / 10,
+                  (ydata.max() - ydata.min()))
+    if not is_scan:
+        ydata = np.multiply(ydata,-1.0)
+        #distance=5
+        width=3
+        rel_height=0.2
+        prominence = ((ydata.max() - ydata.min()) / 20,
+                      (ydata.max() - ydata.min()))
+
+    i_pk, other = scipy.signal.find_peaks(ydata,
+                                      threshold=threshold,
+                                      distance=distance,
+                                      width=width,
+                                      rel_height=rel_height,
+                                      prominence=prominence
+                                      )
+
+    if verbose:
+        print("find_peaks found {} peaks".format(len(i_pk)))
+
+    #widths, _ = peak_widths(ydata,i_pk,rel_height=0.1)
+    # Sort from the highest/strongest peak to the lowest/weakest
+    # i_pk = sorted(i_pk, key=lambda x: other['width_heights'][np.where(i_pk == x)], reverse=True)
+    i_pk = sorted(i_pk, key=lambda x: ydata[x], reverse=True)
+
+    return i_pk

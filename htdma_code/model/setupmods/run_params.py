@@ -1,4 +1,9 @@
 
+
+# Default setting for relative humidity for DMA 2
+DEFAULT_DMA2_RH = 85.0
+
+
 class RunParams:
     """
     RunParams - a simple class used to encapsulate all of the parameters for a given run
@@ -9,6 +14,7 @@ class RunParams:
         * mean_free_path_m
         * temp_k
         * pres_kPa
+        * rh
 
     """
     def __init__(self,
@@ -16,18 +22,20 @@ class RunParams:
                  gas_density=0.0,
                  mean_free_path_m=0.0,
                  temp_k=20+273.15,
-                 pres_kPa=101.3):
+                 pres_kPa=101.3,
+                 rh=DEFAULT_DMA2_RH):
         self.mu_gas_viscosity_Pa_sec = mu_gas_viscosity_Pa_sec
         self.gas_density = gas_density
         self.mean_free_path_m = mean_free_path_m
         self.temp_k = temp_k
         self.pres_kPa = pres_kPa
+        self.rh = rh
         if mu_gas_viscosity_Pa_sec == 0.0 or gas_density == 0.0 or mean_free_path_m == 0.0:
             self._is_initialized_ = False
         else:
             self._is_initialized_ = True
 
-    def set_params(self,mu_gas_viscosity_Pa_sec,gas_density,mean_free_path_m,temp_k,pres_kPa):
+    def set_params(self,mu_gas_viscosity_Pa_sec,gas_density,mean_free_path_m,temp_k,pres_kPa,rh):
         """
         A basic setter method to set the parameters that were used for the run
         """
@@ -36,7 +44,11 @@ class RunParams:
         self.mean_free_path_m = mean_free_path_m
         self.temp_k = temp_k
         self.pres_kPa = pres_kPa
+        self.rh = rh
         self._is_initialized_ = True
+
+    def set_rh(self,rh):
+        self.rh = rh
 
     def __repr__(self):
         s = "RunParams:\n"
@@ -48,4 +60,5 @@ class RunParams:
             s += "  mean free path: {}\n".format(self.mean_free_path_m)
             s += "  temp (K): {}\n".format(self.temp_k)
             s += "  pres (kPa): {}\n".format(self.pres_kPa)
+            s += "  rh (%): {}\n".format(self.rh)
         return s

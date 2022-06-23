@@ -17,6 +17,7 @@ import htdma_code.model.model as model_pkg
 from htdma_code.view.dma_1_center_widget import DMA_1_Center_Frame
 from htdma_code.view.dma_1_dock_form import DMA_1_Form
 from htdma_code.view.scan_dock_form import Scan_Form
+from htdma_code.view.scan_center_widget import Scan_Data_Center_Frame
 
 class MainWindow(QMainWindow):
     def __init__(self, model: model_pkg.Model):
@@ -36,14 +37,14 @@ class MainWindow(QMainWindow):
 
         # Set up the dock widget. Then, create the tabs that will be placed in the dock
         self.docker_tabs = self.create_tab_widget_for_dock()
+        self.docker_tabs.setCurrentIndex(0)
 
         dockWidget = QDockWidget("", self)
         dockWidget.setWidget(self.docker_tabs)
         dockWidget.setFloating(False)
         self.addDockWidget(Qt.LeftDockWidgetArea,dockWidget)
 
-        # Finally, set up the main view itself
-        self.setCentralWidget(DMA_1_Center_Frame(parent=self,model=model))
+        self.update_center_widget()
 
     def create_tab_widget_for_dock(self) -> QTabWidget:
 
@@ -93,3 +94,10 @@ class MainWindow(QMainWindow):
         self.update_dock_form_from_model()
         self.update_center_from_model()
 
+    def update_center_widget(self):
+        if self.docker_tabs.currentIndex() == 0:
+            self.dma_1_center = DMA_1_Center_Frame(parent=self, model=self.model)
+            self.setCentralWidget(self.dma_1_center)
+        elif self.docker_tabs.currentIndex() == 1:
+            self.scan_data_center = Scan_Data_Center_Frame(parent=self, model=self.model)
+            self.setCentralWidget(self.scan_data_center)

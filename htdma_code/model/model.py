@@ -31,7 +31,7 @@ class Model:
         self.current_scan_num = 0
         self._update_selected_scan_in_model()
 
-    def select_scan_num(self, scan_num: int) -> bool:
+    def select_scan(self, scan_num: int) -> bool:
         """
         Select a specified scan number
 
@@ -44,7 +44,7 @@ class Model:
         else:
             return False
 
-    def select_next_scan_num(self) -> bool:
+    def select_next_scan(self) -> bool:
         """
         Select the next scan from the collection of scans contained in the model.
 
@@ -58,7 +58,7 @@ class Model:
             self._update_selected_scan_in_model()
             return True
 
-    def select_prev_sample_num(self) -> bool:
+    def select_prev_scan(self) -> bool:
         """
         Select the previous scan from the collection of scans contained in the model.
 

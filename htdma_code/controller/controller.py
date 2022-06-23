@@ -21,9 +21,12 @@ class Controller:
         # scan selections
         self.main_view.scan_form.prev_scan_button.clicked.connect(self.prev_scan_button_clicked)
         self.main_view.scan_form.next_scan_button.clicked.connect(self.next_scan_button_clicked)
+        self.main_view.scan_form.rh_dspinbox.valueChanged.connect(self.rh_changed)
 
         # Peak fitting
         self.main_view.scan_form.peak_fit_button.clicked.connect(self.peak_fit_button_clicked)
+
+        self.main_view.docker_tabs.currentChanged.connect(self.tab_changed)
 
     def menu_file_open_action(self):
         # """
@@ -65,7 +68,7 @@ class Controller:
     def prev_scan_button_clicked(self):
         if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
-        elif not self.model.select_prev_sample_num():
+        elif not self.model.select_prev_scan():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
             # self.main_view.update_scan_widget_views_from_model()
@@ -74,7 +77,7 @@ class Controller:
     def next_scan_button_clicked(self):
         if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
-        elif not self.model.select_next_scan_num():
+        elif not self.model.select_next_scan():
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
             # self.main_view.update_scan_widget_views_from_model()
@@ -84,6 +87,16 @@ class Controller:
         if not self.model.current_scan:
             Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
         else:
-            self.model.current_scan.fit(num_peaks=self.main_view.scan_form.scan_fit_num_peaks_spinbox.value())
+            self.model.current_scan.fit(num_peaks_desired=self.main_view.scan_form.scan_fit_num_peaks_spinbox.value())
             self.main_view.update_from_model()
             # self.main_view.update_scan_widget_views_from_model()
+
+    def tab_changed(self,new_index):
+        print("Changed to " + str(new_index))
+        self.main_view.update_center_widget()
+
+    def rh_changed(self):
+        if not self.model.setup.run_params:
+            Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
+        else:
+            self.model.setup.run_params.set_rh(self.main_view.scan_form.rh_dspinbox.value())

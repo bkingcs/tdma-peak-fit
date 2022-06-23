@@ -1,4 +1,13 @@
 
+# TODO
+
+* Add a place for user to enter RH. It's required for the Kappa calculation. Set a default value of 85%
+
+* Compute growth factor
+* Compute Kappa from gf
+* 
+
+
 # Configuration
 
 ### Pycharm
@@ -10,3 +19,4 @@
 ### PyQt5 / PySide2 Resources
 
 * https://www.pythonguis.com/pyside-tutorial/
+

@@ -8,11 +8,13 @@ import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+
 mpl.use('Qt5Agg')
 #from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
 from htdma_code.model.model import Model
+from htdma_code.view.plot_utils import plot_scan_and_residuals
 
 class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
 
@@ -47,7 +49,8 @@ class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
 
         # Update it from the model
         if self.model.current_scan:
-            self.model.current_scan.plot(self.ax_data, self.ax_residuals)
+            plot_scan_and_residuals(self.model.current_scan,
+                                    self.ax_data,self.ax_residuals)
             self.gridspec.tight_layout(self.fig)
 
         # TODO - Not sure which if any of these draw methods are needed

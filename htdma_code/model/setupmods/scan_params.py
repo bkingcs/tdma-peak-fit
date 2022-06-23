@@ -4,7 +4,6 @@ import pandas as pd
 
 from htdma_code.model.files.read_file_utils import extract_scan_params
 
-
 class ScanParams:
 
     def __init__(self, df: pd.DataFrame, scan_index: int) -> None:
@@ -14,7 +13,7 @@ class ScanParams:
         for the given Scan
 
         :param df: A pandas DataFrame representing all scans from a given run
-        :parm scan_index: An integer index value used to select the scan of interest
+        :param scan_index: An integer index value used to select the scan of interest
         """
 
         self.scan_id_from_data = int(df.columns[scan_index])
@@ -43,7 +42,6 @@ class ScanParams:
         if self.q_aIn_lpm != self.q_aOut_lpm:
             self.is_symmetric = False
             self.q_excess_lpm = self.q_sh_lpm + self.q_aIn_lpm - self.q_aOut_lpm
-
 
     def __repr__(self):
         s = "scan #: {}\n".format(self.scan_id_from_data)
