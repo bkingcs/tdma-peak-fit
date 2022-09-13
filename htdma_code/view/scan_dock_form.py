@@ -39,8 +39,9 @@ class Scan_Form(QFormLayout):
 
         self.scan_up_time_label = QLabel()
         self.scan_down_time_label = QLabel()
-        self.low_V_label = QLabel()
-        self.high_V_label = QLabel()
+        self.dp_range_label = QLabel()
+        self.V_range_label = QLabel()
+        self.total_conc_label = QLabel()
 
         self.scan_fit_num_peaks_spinbox = Qw.QSpinBox()
         self.scan_fit_num_peaks_spinbox.setRange(1,MAX_PEAKS_TO_FIT)
@@ -70,10 +71,11 @@ class Scan_Form(QFormLayout):
         self.addRow(TitleHLine("Scan Details"))
         self.addRow("Scan #", self.scan_num_lineedit)
         self.addRow("Time", self.scan_timestamp_label)
-        self.addRow("Low Voltage",self.low_V_label)
-        self.addRow("High Voltage", self.high_V_label)
+        self.addRow("dp Range", self.dp_range_label)
+        self.addRow("V Range", self.V_range_label)
         self.addRow("Scan Up Time", self.scan_up_time_label)
         self.addRow("Scan Down Time", self.scan_down_time_label)
+        self.addRow("Total Conc",self.total_conc_label)
 
         self.addRow(QLabel(""))
         hbox = Qw.QHBoxLayout()
@@ -98,10 +100,14 @@ class Scan_Form(QFormLayout):
         self.dma_2_name_label.setText(self.model.setup.basefilename)
         self.rh_dspinbox.setValue(self.model.setup.run_params.rh)
         if self.model.current_scan is not None:
-            self.scan_num_lineedit.setText(str(self.model.setup.scan_params.scan_id_from_data))
-            self.scan_timestamp_label.setText(self.model.setup.scan_params.time_stamp.strftime("%H:%M:%S"))
-            self.low_V_label.setText("{:.0f}".format(self.model.setup.scan_params.low_V))
-            self.high_V_label.setText("{:.0f}".format(self.model.setup.scan_params.high_V))
+            scan_params = self.model.setup.scan_params
+            self.scan_num_lineedit.setText(str(scan_params.scan_id_from_data))
+            self.scan_timestamp_label.setText(scan_params.time_stamp.strftime("%H:%M:%S"))
+            self.dp_range_label.setText("{:.0f} - {:.0f}".format(scan_params.low_dp_nm,
+                                                                 scan_params.high_dp_nm))
+            self.V_range_label.setText("{:.0f} - {:.0f}".format(scan_params.low_V,
+                                                                scan_params.high_V))
+            self.total_conc_label.setText("{:.0f}".format(scan_params.total_conc))
             self.scan_up_time_label.setText("{:.0f}".format(self.model.setup.scan_params.scan_up_time))
             self.scan_down_time_label.setText("{:.0f}".format(self.model.setup.scan_params.scan_down_time))
 
@@ -122,8 +128,9 @@ class Scan_Form(QFormLayout):
         else:
             self.scan_num_lineedit.setText("")
             self.scan_timestamp_label.setText("00:00:00")
-            self.low_V_label.setText("0")
-            self.high_V_label.setText("0")
+            self.dp_range_label.setText("- - -")
+            self.V_range_label.setText("- - -")
+            self.total_conc_label.setText("0")
             self.scan_up_time_label.setText("")
             self.scan_down_time_label.setText("")
             self.num_peaks_predicted_label.setText("")

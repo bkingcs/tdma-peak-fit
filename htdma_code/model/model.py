@@ -1,11 +1,11 @@
 """
 Model
 """
-
 from htdma_code.model.setupmods.setup import Setup
-from htdma_code.model.scans import Scans
 from htdma_code.model.dma1 import DMA_1
 from htdma_code.model.scan import Scan
+from htdma_code.model.scans import Scans
+from htdma_code.model.results_table import ResultsTableModel
 
 class Model:
     """
@@ -22,23 +22,29 @@ class Model:
         self.dma1 = None
 
         self.current_scan: Scan = None
-        self.current_scan_num: int = None
+        self.current_scan_index: int = None
 
     def process_new_file(self, filename):
+        """
+        This handles the initialization of everything needed to start analyzing a new file of scans.
+        """
         self.setup.read_file(filename)
         self.scans.read_file(filename)
-        self.dma1 = DMA_1(self.setup)
-        self.current_scan_num = 0
-        self._update_selected_scan_in_model()
 
-    def select_scan(self, scan_num: int) -> bool:
+        # Now, initialize various setup structures
+        self.dma1 = DMA_1(self.setup)
+        self.current_scan_index = 0
+        self._update_selected_scan_in_model()
+        self.total_results_table = ResultsTableModel()
+
+    def select_scan(self, scan_index: int) -> bool:
         """
         Select a specified scan number
 
         :return: True if the scan could be selected, False if it was out of range
         """
-        if scan_num >= 0 and scan_num < self.scans.get_num_scans():
-            self.current_scan_num = scan_num
+        if scan_index >= 0 and scan_index < self.scans.get_num_scans():
+            self.current_scan_index = scan_index
             self._update_selected_scan_in_model()
             return True
         else:
@@ -51,10 +57,10 @@ class Model:
         :return: True if the next scan was selected successfully, False if there were no
         more scans that could be selected
         """
-        if self.current_scan_num + 1 == self.scans.get_num_scans():
+        if self.current_scan_index + 1 == self.scans.get_num_scans():
             return False
         else:
-            self.current_scan_num += 1
+            self.current_scan_index += 1
             self._update_selected_scan_in_model()
             return True
 
@@ -65,19 +71,19 @@ class Model:
         :return True if the previous scan was selected successfully, False if the current
         scan is already the first one
         """
-        if self.current_scan_num == 0:
+        if self.current_scan_index == 0:
             return False
         else:
-            self.current_scan_num -= 1
+            self.current_scan_index -= 1
             self._update_selected_scan_in_model()
             return True
 
     def _update_selected_scan_in_model(self):
         """
         Retrieve a scan from all of the scans based on the internal value of
-        self.current_scan_num. This is not to be called outside of this class.
+        self.current_scan_index. This is not to be called outside of this class.
         """
-        self.current_scan = self.scans.get_scan(self.current_scan_num)
-        self.setup.update_scan_params(self.current_scan_num)
+        self.current_scan = self.scans.get_scan(scan_index=self.current_scan_index)
+        self.setup.update_scan_params(self.current_scan_index)
 
 

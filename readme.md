@@ -7,6 +7,10 @@
 * Compute Kappa from gf
 * 
 
+* Can we create cm^3 as an exponent?
+* Do not hard code skipping top 18 rows, but scan to look for "Sample #"
+
+* Check Nahin's data
 
 # Configuration
 

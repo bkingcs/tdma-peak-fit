@@ -45,7 +45,7 @@ class Setup:
         dict_setup_info = read_file_utils.read_setup(filename)
 
         # Read in the scan data
-        (self.df_raw_scan_data, self.num_dp_values) = read_file_utils.read_scans(filename)
+        (self.df_raw_scan_data, self.num_dp_values) = read_file_utils.read_scans_into_dataframe(filename)
 
         self.dma_1_params = DMAParams(length_cm=dict_setup_info["DMA_1_LENGTH_CM"],
                                       radius_in_cm=dict_setup_info["DMA_1_RADIUS_IN_CM"],

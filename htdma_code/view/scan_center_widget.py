@@ -4,7 +4,7 @@ from PySide2.QtWidgets import QFrame, QTableWidget, QTableWidgetItem
 
 from htdma_code.model.model import Model
 from htdma_code.view.scan_data_graph import Scan_Data_Graph_Widget
-
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 class Scan_Data_Center_Frame(QFrame):
 
     def __init__(self, parent, model: Model):
@@ -18,13 +18,20 @@ class Scan_Data_Center_Frame(QFrame):
         self.scan_results_table.setHorizontalHeaderLabels(["Peak #","dp","height","fwhh","sd","growth","kappa"])
 
         self.scan_data_graph_widget = Scan_Data_Graph_Widget(model)
+        toolbar = NavigationToolbar2QT(self.scan_data_graph_widget,self)
 
-        self.splitter = Qw.QSplitter(Qt.Vertical)
-        self.splitter.addWidget(self.scan_data_graph_widget)
-        self.splitter.addWidget(self.scan_results_table)
+        graphlayout = Qw.QVBoxLayout()
+        graphlayout.addWidget(toolbar)
+        graphlayout.addWidget(self.scan_data_graph_widget)
+        widget = Qw.QWidget()
+        widget.setLayout(graphlayout)
+
+        splitter = Qw.QSplitter(Qt.Vertical)
+        splitter.addWidget(widget)
+        splitter.addWidget(self.scan_results_table)
 
         layout = Qw.QVBoxLayout()
-        layout.addWidget(self.splitter)
+        layout.addWidget(splitter)
 
         # THe Qt way - a layout always needs a dummy widget
         self.setLayout(layout)

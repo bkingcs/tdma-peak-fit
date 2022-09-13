@@ -26,7 +26,8 @@ class Controller:
         # Peak fitting
         self.main_view.scan_form.peak_fit_button.clicked.connect(self.peak_fit_button_clicked)
 
-        self.main_view.docker_tabs.currentChanged.connect(self.tab_changed)
+        # Changing the tab selected on the docker widget
+        self.main_view.docker_tabs.currentChanged.connect(self.dock_tab_changed)
 
     def menu_file_open_action(self):
         # """
@@ -36,7 +37,7 @@ class Controller:
         # noinspection PyCallByClass
         files = QFileDialog.getOpenFileNames(self.main_view, "Open files", open_dir, "Data files (*.csv *.txt)")[0]
         if files:
-            # read in the new file
+            # read in the new file. Just use the first one. If they choose multiple files, ignore the rest
             self.model.process_new_file(files[0])
             self.status_bar.showMessage("Read in file {}".format(files[0]))
 
@@ -89,9 +90,12 @@ class Controller:
         else:
             self.model.current_scan.fit(num_peaks_desired=self.main_view.scan_form.scan_fit_num_peaks_spinbox.value())
             self.main_view.update_from_model()
+
+            self.model.total_results_table.add_scan_results(self.model.current_scan)
+
             # self.main_view.update_scan_widget_views_from_model()
 
-    def tab_changed(self,new_index):
+    def dock_tab_changed(self, new_index):
         print("Changed to " + str(new_index))
         self.main_view.update_center_widget()
 

@@ -16,6 +16,7 @@ import PySide2.QtWidgets as Qw
 import htdma_code.model.model as model_pkg
 from htdma_code.view.dma_1_center_widget import DMA_1_Center_Frame
 from htdma_code.view.dma_1_dock_form import DMA_1_Form
+from htdma_code.view.results_center_widget import Total_Results_Center_Frame
 from htdma_code.view.scan_dock_form import Scan_Form
 from htdma_code.view.scan_center_widget import Scan_Data_Center_Frame
 
@@ -101,3 +102,6 @@ class MainWindow(QMainWindow):
         elif self.docker_tabs.currentIndex() == 1:
             self.scan_data_center = Scan_Data_Center_Frame(parent=self, model=self.model)
             self.setCentralWidget(self.scan_data_center)
+        elif self.docker_tabs.currentIndex() == 2:
+            self.results_data_center = Total_Results_Center_Frame(parent=self,model=self.model)
+            self.setCentralWidget(self.results_data_center)

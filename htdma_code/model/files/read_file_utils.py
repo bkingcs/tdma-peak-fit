@@ -67,7 +67,7 @@ def read_setup(filename: str) -> dict:
 
     return dict_result
 
-def read_scans(filename: str) -> (pd.DataFrame, int):
+def read_scans_into_dataframe(filename: str) -> (pd.DataFrame, int):
     """
     Read in all of the scans for a given run
 

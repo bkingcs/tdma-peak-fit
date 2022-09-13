@@ -70,6 +70,9 @@ MAX_PEAKS_TO_FIT = 5
 MIN_GOOD_WINDOW_SIZE = 5
 NUM_FIT_PASSES = 1
 
+# How close to the edges of the signal do we allow peaks?
+INDEX_OF_PEAK_BOUNDS = 3
+
 class PeakFitResult:
     """
     Encapsulate results from each peak identified in the scan
@@ -142,16 +145,18 @@ class Scan:
     Attributes:
         -
     """
-    def __init__(self, df: pd.DataFrame, num_dp_values: int):
+    def __init__(self, scan_index: int, df: pd.DataFrame, num_dp_values: int):
         """
         This function is passed a single scan column from the time
         stamp right through the end of the column
 
-        :param df: A data frame representing all row data for a single scan
+        :param scan_index: Index of this scan in the run
+        :param df: A data frame representing all row data for this scan
         :param num_dp_values: number of dp values in the scan
         """
 
         self.num_scan_rows = num_dp_values
+        self.scan_index = scan_index
 
         # Let's keep an internal dataframe of the data, for now...
         self._df_data = df.iloc[1:1+self.num_scan_rows, [0]].copy()
@@ -342,7 +347,7 @@ class Scan:
         is_done = False
         while not is_done:
 
-            fit_func = self.get_gaussian_fit_func(num_peaks_predicting)
+            fit_func = get_gaussian_fit_func(num_peaks_predicting)
 
             if verbose:
                 for peak in range(num_peaks_predicting):
@@ -442,8 +447,8 @@ class Scan:
                     max_amp = init_amp * 1.5
 
                     init_mu = xdata[i_pk]
-                    min_mu = init_mu - xdata_width * 0.2
-                    max_mu = init_mu + xdata_width * 0.2
+                    min_mu = init_mu - xdata_width * 0.25
+                    max_mu = init_mu + xdata_width * 0.25
 
                     init_sd = xdata_width * 0.05
                     min_sd = xdata_width * 0.01
@@ -457,12 +462,13 @@ class Scan:
                 else:
                     print("CRAP! Sorry! Could not find additional peaks!")
                     init_amp = ydata[i_peaks[0]]
-                    min_amp = init_amp * 0.05
-                    max_amp = init_amp * 1.5
+                    min_amp = ydata.max() * 0.005
+                    max_amp = ydata.max() * 1.25
 
                     init_mu = xdata[i_peaks[0]]
-                    min_mu = xdata[0]
-                    max_mu = xdata[-1]
+                    # TODO - Need to figure out the appropriate peak range in this case
+                    min_mu = xdata[INDEX_OF_PEAK_BOUNDS]
+                    max_mu = xdata[-(INDEX_OF_PEAK_BOUNDS+1)]
 
                     init_sd = xdata_width * 0.05
                     min_sd = xdata_width * 0.01
@@ -517,20 +523,9 @@ class Scan:
         #     print("narrow RMSE = {}".format(self.fit_rmse_near_peaks))
 
         # return popt, pcov
-        return
+        # TODO - Temporary - add the fit results from the current scan...
 
-    def get_gaussian_fit_func(self, num_peaks):
-        if num_peaks == 1:
-            fit_func = _1gaussian
-        elif num_peaks == 2:
-            fit_func = _2gaussian
-        elif num_peaks == 3:
-            fit_func = _3gaussian
-        elif num_peaks == 4:
-            fit_func = _4gaussian
-        elif num_peaks == 5:
-            fit_func = _5gaussian
-        return fit_func
+        return
 
 
     # def get_fit_peak_dp(self):
@@ -540,6 +535,24 @@ class Scan:
     #     sel = np.array(list(range(1,1+3*(self.fit_num_peaks-1)+1,3)))
     #     x = np.exp(self.fit_peak_params[sel])
     #     return x
+
+
+def get_gaussian_fit_func(num_peaks):
+    """
+    Return the correct fit function depending on the number of gaussians you
+    are trying to fit
+    """
+    if num_peaks == 1:
+        fit_func = _1gaussian
+    elif num_peaks == 2:
+        fit_func = _2gaussian
+    elif num_peaks == 3:
+        fit_func = _3gaussian
+    elif num_peaks == 4:
+        fit_func = _4gaussian
+    elif num_peaks == 5:
+        fit_func = _5gaussian
+    return fit_func
 
 
 def calc_moving_ave(x, w: int):
@@ -556,31 +569,33 @@ def calc_moving_ave(x, w: int):
     if w % 2 == 0:
         raise ValueError("calc_moving_ave parameter w must be odd")
 
-    x = np.convolve(x, np.ones(3), 'valid') / w
+    x = np.convolve(x, np.ones(w), 'valid') / w
     pad = (w-1) // 2
     x = np.append(np.zeros(pad), x)
     x = np.append(x, np.zeros(pad))
     return x
 
 
-def predict_peaks(ydata, is_scan: bool, verbose=False):
+def predict_peaks(data, is_scan: bool, verbose=False):
     """
     Given a signal, predict the indices of the peaks. The hard work of this method is
     done by `scipy.signal.find_peaks`.
 
-    :param ydata: the data (either scan or residual)
+    :param data: the data (either scan or residual)
     :param is_scan: Is this scan data or residual data?
     :param verbose: [Optional, default=False] do we output some debug info while working?
     :returns: a list of indicies locating where the peaks in the signal are, sorted from the
     strongest peak to the weakest
     """
 
-    # ydata = np.convolve(ydata, np.ones(3), 'valid') / 3
-    # ydata = np.append([0], ydata)
-    # ydata = np.append(ydata, [0])
+    # data = np.convolve(data, np.ones(3), 'valid') / 3
+    # data = np.append([0], data)
+    # data = np.append(data, [0])
+
+    x = data
 
     # Vertical distance of the peak to neighbor samples
-    threshold = (0, (ydata.max() - ydata.min()) / 4)
+    threshold = (0, (x.max() - x.min()) / 4)
     # distance to neighbor peaks in samples
     distance = 10
     # width of the peak in samples
@@ -592,30 +607,37 @@ def predict_peaks(ydata, is_scan: bool, verbose=False):
     # - how much a peak stands out from the surrounding baseline
     #   of the signal and is defined as the vertical distance between
     #   the peak and its lowest contour line
-    prominence = ((ydata.max() - ydata.min()) / 10,
-                  (ydata.max() - ydata.min()))
+    prominence = ((x.max() - x.min()) / 10,
+                  (x.max() - x.min()))
     if not is_scan:
-        ydata = np.multiply(ydata,-1.0)
+        x = np.multiply(x, -1.0)
         #distance=5
         width=3
-        rel_height=0.2
-        prominence = ((ydata.max() - ydata.min()) / 20,
-                      (ydata.max() - ydata.min()))
+        rel_height= 0.25
+        prominence = ((x.max() - x.min()) / 20,
+                      (x.max() - x.min()))
 
-    i_pk, other = scipy.signal.find_peaks(ydata,
-                                      threshold=threshold,
-                                      distance=distance,
-                                      width=width,
-                                      rel_height=rel_height,
-                                      prominence=prominence
-                                      )
+    i_pk, other = scipy.signal.find_peaks(x,
+                                          threshold=threshold,
+                                          distance=distance,
+                                          width=width,
+                                          rel_height=rel_height,
+                                          prominence=prominence
+                                          )
 
     if verbose:
         print("find_peaks found {} peaks".format(len(i_pk)))
 
-    #widths, _ = peak_widths(ydata,i_pk,rel_height=0.1)
+    #widths, _ = peak_widths(data,i_pk,rel_height=0.1)
     # Sort from the highest/strongest peak to the lowest/weakest
-    # i_pk = sorted(i_pk, key=lambda x: other['width_heights'][np.where(i_pk == x)], reverse=True)
-    i_pk = sorted(i_pk, key=lambda x: ydata[x], reverse=True)
+    if len(i_pk) > 0:
+        i_pk = sorted(i_pk, key=lambda i: x[i], reverse=True)
+        i_pk_good = []
+        for i in i_pk:
+            if i >= INDEX_OF_PEAK_BOUNDS and i <= len(x) - 1 - INDEX_OF_PEAK_BOUNDS:
+                i_pk_good.append(i)
+        return i_pk_good
+    else:
+        return []
 
     return i_pk

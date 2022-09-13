@@ -32,7 +32,7 @@ def plot_scan_and_residuals(scan: Scan,
     # Plot actual data
     ax_data.plot(xdata,ydata, "ro")
     #ax_data.set_ylabel("conc",family="serif",  fontsize=12)
-    ax_data.set_ylabel("conc", fontsize=20)
+    ax_data.set_ylabel("conc (#/cm^3)", fontsize=20)
     ax_data.grid(True)
     ax_data.set_xscale("log")
     ax_data.set_xticks([10,50] + list(range(100,1000,100)))
@@ -71,7 +71,7 @@ def plot_scan_and_residuals(scan: Scan,
                             total_fit_result.residuals[i_residual_peaks],
                             'k*')
 
-        ax_residuals.set_xlabel("dp", fontsize=15)
+        ax_residuals.set_xlabel("dp (nm)", fontsize=15)
         ax_residuals.set_ylabel("residuals", fontsize=15)
         ax_residuals.grid(True)
 
