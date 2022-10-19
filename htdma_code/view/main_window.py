@@ -21,7 +21,7 @@ from htdma_code.view.scan_dock_form import Scan_Form
 from htdma_code.view.scan_center_widget import Scan_Data_Center_Frame
 
 class MainWindow(QMainWindow):
-    def __init__(self, model: model_pkg.Model):
+    def __init__(self, model: model_pkg.Model, sw_version: str):
         super().__init__()
 
         self.model = model
@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
 
         # Set up the statusbar
         self.setStatusBar(QStatusBar(self))
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage("Version: " + sw_version + " - Ready")
 
         # Set up the menu for the application
         self.create_menu()

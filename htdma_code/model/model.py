@@ -23,6 +23,7 @@ class Model:
 
         self.current_scan: Scan = None
         self.current_scan_index: int = None
+        self.total_results_table = None
 
     def process_new_file(self, filename):
         """

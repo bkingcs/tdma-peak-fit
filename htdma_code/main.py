@@ -9,6 +9,9 @@ from htdma_code.controller.controller import Controller
 from htdma_code.model.model import Model
 from htdma_code.view.main_window import MainWindow
 
+# Main version number for the software
+SW_VERSION="20221019.01"
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
@@ -16,7 +19,7 @@ if __name__ == '__main__':
     model = Model()
 
     # Instantiate the main window to represent the view
-    window = MainWindow(model)
+    window = MainWindow(model,SW_VERSION)
 
     # Instantiate a controller to connect both
     controller = Controller(model,window)
