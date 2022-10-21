@@ -341,6 +341,8 @@ class Scan:
         if num_peaks_predicting > num_peaks_desired:
             num_peaks_predicting = num_peaks_desired
 
+
+
         # Start with selecting all data
         sel = [True for i in range(xdata.shape[0])]
 
@@ -552,6 +554,8 @@ def get_gaussian_fit_func(num_peaks):
         fit_func = _4gaussian
     elif num_peaks == 5:
         fit_func = _5gaussian
+    else:
+        fit_func = None
     return fit_func
 
 
@@ -595,7 +599,9 @@ def predict_peaks(data, is_scan: bool, verbose=False):
     x = data
 
     # Vertical distance of the peak to neighbor samples
-    threshold = (0, (x.max() - x.min()) / 4)
+    # NOTE - changed 20221021 - it was threshold = (0, (x.max() - x.min()) / 4)
+    # But for very thin tall peaks with very few points, the threshold was too tight.
+    threshold = (0, (x.max() - x.min()) / 2)
     # distance to neighbor peaks in samples
     distance = 10
     # width of the peak in samples

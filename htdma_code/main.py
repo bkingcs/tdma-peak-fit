@@ -10,7 +10,7 @@ from htdma_code.model.model import Model
 from htdma_code.view.main_window import MainWindow
 
 # Main version number for the software
-SW_VERSION="20221019.01"
+SW_VERSION="20221021.01"
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
