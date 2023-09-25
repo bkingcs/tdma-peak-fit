@@ -1,3 +1,10 @@
+# tdma-peak-fit
+Software to determine growth factors from TDMA data
+
+This is alpha software, a work in progress. It performs multi-peak fitting of TDMA data on a log-normal scale. 
+
+The software is built on Python 3.10, with a variety of packages. The primary UI is built using Pyside2 bindings to PyQT5. I'll eventually move everything over to pure PyQT6. 
+
 
 # TODO
 
@@ -23,4 +30,3 @@
 ### PyQt5 / PySide2 Resources
 
 * https://www.pythonguis.com/pyside-tutorial/
-
