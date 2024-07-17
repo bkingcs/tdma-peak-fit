@@ -59,6 +59,10 @@ class Scan_Form(QFormLayout):
         self.rmse_label = QLabel()
         self.durbin_watson_label = QLabel()
 
+        # Allow the user to override autoscaling of y axis
+        self.autoscale_y_checkbox = Qw.QCheckBox("Autoscale Y")
+        self.max_y_lineedit = QLineEdit()
+
     def _add_widgets_to_form(self):
         # Start adding info
         self.addRow("Name", self.dma_2_name_label)
@@ -95,6 +99,12 @@ class Scan_Form(QFormLayout):
         self.addRow("RMSE",self.rmse_label)
         self.addRow("Durbin-Watson",self.durbin_watson_label)
 
+        self.addRow(QLabel(""))
+        self.addRow(TitleHLine("Graphing"))
+        self.addRow(self.autoscale_y_checkbox)
+        self.addRow("Max Y",self.max_y_lineedit)
+
+
     def update_from_model(self):
         print("update_scan_widget_views: " + repr(self.model.current_scan))
         self.dma_2_name_label.setText(self.model.setup.basefilename)
@@ -125,6 +135,17 @@ class Scan_Form(QFormLayout):
                 self.rmse_label.setText("")
                 self.durbin_watson_label.setText("")
 
+            # Update the maximum y scale value if autoscale is not checked
+            if self.model.scan_graph_auto_scale_y is True:
+                self.autoscale_y_checkbox.setChecked(True)
+                self.max_y_lineedit.setEnabled(False)
+                self.max_y_lineedit.setText("")
+            else:
+                self.autoscale_y_checkbox.setChecked(False)
+                self.max_y_lineedit.setEnabled(True)
+                # Show number in scientific format with 2 decimal places
+                self.max_y_lineedit.setText("{:.2e}".format(self.model.scan_graph_max_y))
+
         else:
             self.scan_num_lineedit.setText("")
             self.scan_timestamp_label.setText("00:00:00")
@@ -137,3 +158,6 @@ class Scan_Form(QFormLayout):
             self.resuduals_mean_label.setText("")
             self.rmse_label.setText("")
             self.durbin_watson_label.setText("")
+            self.autoscale_y_checkbox.setChecked(True)
+            self.max_y_lineedit.setEnabled(True)
+            self.max_y_lineedit.setText("")

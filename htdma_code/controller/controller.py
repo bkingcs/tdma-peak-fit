@@ -29,6 +29,11 @@ class Controller:
         # Changing the tab selected on the docker widget
         self.main_view.docker_tabs.currentChanged.connect(self.dock_tab_changed)
 
+        # Autoscale checkbox and max_y_lineedit changed
+        self.main_view.scan_form.autoscale_y_checkbox.stateChanged.connect(self.autoscale_checkbox_changed)
+        self.main_view.scan_form.max_y_lineedit.returnPressed.connect(self.max_y_lineedit_changed)
+
+
     def menu_file_open_action(self):
         # """
         # Opens data files and begins the scan alignment process
@@ -94,6 +99,31 @@ class Controller:
             self.model.total_results_table.add_scan_results(self.model.current_scan)
 
             # self.main_view.update_scan_widget_views_from_model()
+
+    def autoscale_checkbox_changed(self):
+        if self.main_view.scan_form.autoscale_y_checkbox.isChecked():
+            # We're autoscaling. So, disable the max_y_lineedit and
+            # set the model's autoscale flag to True
+            self.model.scan_graph_auto_scale_y = True
+            self.main_view.scan_form.max_y_lineedit.setEnabled(False)
+            self.main_view.scan_form.max_y_lineedit.setText("")
+        else:
+            # We're not autoscaling. So, enable the max_y_lineedit and set its
+            # initial value to whatever max value the current scan is showing + 5%
+            self.model.scan_graph_auto_scale_y = False
+            self.model.scan_graph_max_y = self.model.current_scan.get_max_value() * 1.05
+
+            self.main_view.scan_form.max_y_lineedit.setEnabled(True)
+            # Update the model's max_y value to the value in the max_y_lineedit rounded up to two significant digits
+            str_max_y = "{:.2e}".format(self.model.scan_graph_max_y)
+            self.main_view.scan_form.max_y_lineedit.setText(str_max_y)
+
+        self.main_view.update_from_model()
+
+    def max_y_lineedit_changed(self):
+        # Update the model's max_y value to the value in the max_y_lineedit
+        self.model.scan_graph_max_y = float(self.main_view.scan_form.max_y_lineedit.text())
+        self.main_view.update_from_model()
 
     def dock_tab_changed(self, new_index):
         print("Changed to " + str(new_index))

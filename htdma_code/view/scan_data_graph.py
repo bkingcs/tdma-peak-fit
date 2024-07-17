@@ -19,12 +19,18 @@ from htdma_code.view.plot_utils import plot_scan_and_residuals
 class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
 
     def __init__(self, model: Model, parent=None, width=5, height=4, dpi=100):
+
         self.fig = plt.Figure(figsize=(width, height), dpi=dpi)
         self.gridspec = self.fig.add_gridspec(4,1)
         super(Scan_Data_Graph_Widget, self).__init__(self.fig)
 
+        # The primary model that is being visualized in the graph
         self.model = model
+
+        # The data plot
         self.ax_data = None
+
+        # The residuals plot
         self.ax_residuals = None
 
         self.update_plot()
@@ -53,7 +59,10 @@ class Scan_Data_Graph_Widget(FigureCanvasQTAgg):
                                     self.ax_data,self.ax_residuals)
             self.gridspec.tight_layout(self.fig)
 
+        # Set the y limits to the max_y if it is provided
+        if not self.model.scan_graph_auto_scale_y:
+            self.ax_data.set_ylim(0, self.model.scan_graph_max_y)
+
         # TODO - Not sure which if any of these draw methods are needed
         # self.draw_idle()
         self.fig.canvas.draw_idle()
-

@@ -268,6 +268,12 @@ class Scan:
         """
         return self.raw_values
 
+    def get_max_value(self):
+        """
+        :return: the maximum value in the raw concentration values
+        """
+        return self.raw_values.max()
+
     def fit(self, num_peaks_desired, verbose = False, plot_steps = False, plot_func = None):
         """
         This is the mother function that performs the curve fit. The results of the fit

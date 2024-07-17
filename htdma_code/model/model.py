@@ -25,6 +25,10 @@ class Model:
         self.current_scan_index: int = None
         self.total_results_table = None
 
+        # Graphing parameters for autoscaling the y axis.
+        self.scan_graph_auto_scale_y = True
+        self.scan_graph_max_y = None
+
     def process_new_file(self, filename):
         """
         This handles the initialization of everything needed to start analyzing a new file of scans.
