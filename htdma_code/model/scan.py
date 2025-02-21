@@ -31,8 +31,16 @@ import matplotlib.pyplot as plt
 
 ##### Our fit functions
 
-def _1gaussian(x, amp1,mu1,sigma1):
-    return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-mu1)/sigma1)**2)))
+# def _1gaussian(x, amp1,mu1,sigma1):
+#     return amp1*(1/(sigma1*(np.sqrt(2*np.pi))))*(np.exp((-1.0/2.0)*(((x-mu1)/sigma1)**2)))
+
+def _1gaussian(x, amp1, mu1, sigma1):
+    """
+    A: peak amplitude (maximum intensity)
+    x0: peak center
+    sigma: standard deviation (related to FWHM by FWHM = 2.35482*sigma)
+    """
+    return amp1 * np.exp(-0.5 * ((x - mu1)/sigma1)**2)
 
 def _2gaussian(x, amp1, mu1, sigma1, amp2, mu2, sigma2):
     return _1gaussian(x,amp1,mu1,sigma1) + _1gaussian(x,amp2,mu2,sigma2)
@@ -347,8 +355,6 @@ class Scan:
         if num_peaks_predicting > num_peaks_desired:
             num_peaks_predicting = num_peaks_desired
 
-
-
         # Start with selecting all data
         sel = [True for i in range(xdata.shape[0])]
 
@@ -433,15 +439,17 @@ class Scan:
                 ax_data.text(100, 1000, r'$\mu=100,\ \sigma=15$')
                 plt.show()
 
+
+            # The user may want more peaks that were identified above, so we'll use the residual curve
+            # to start with some ideal locations, and relax the constraints on the parameters for these
+            # additional peaks
             if num_peaks_predicting < num_peaks_desired:
-                # If the user actually wants more peaks than were identified, then
-                # lets use the residual curve to determine ideal locations
                 i_residual_peaks = predict_peaks(self.total_fit_result.residuals_smoothed,
                                                  is_scan=False,
                                                  verbose=verbose)
 
-                # Sometimes the residual can measure a large at the tails of
-                # the gaussian, when the acutal data is zero
+                # Sometimes the residual can measure a peak at the tails of
+                # the gaussian, when the actual data are zero. Test for this, and don't allow it!
                 is_good_peak = False
                 for i_pk in i_residual_peaks:
                     if ydata[i_pk] > 0:
@@ -451,12 +459,18 @@ class Scan:
                 # IF there were peaks identified, let's use them!
                 if is_good_peak:
                     init_amp = ydata[i_pk]
-                    min_amp = init_amp * 0.1
-                    max_amp = init_amp * 1.5
+                    # min_amp = init_amp * 0.1
+                    # max_amp = init_amp * 1.5
+                    min_amp = ydata.min()
+                    max_amp = ydata.max()
 
                     init_mu = xdata[i_pk]
-                    min_mu = init_mu - xdata_width * 0.25
-                    max_mu = init_mu + xdata_width * 0.25
+                    # min_mu = init_mu - xdata_width * 0.25
+                    # max_mu = init_mu + xdata_width * 0.25
+                    # We've found it's quite challenging to get a good estimate of a shoulder mu, so let it
+                    # explore the entire space
+                    min_mu = xdata[INDEX_OF_PEAK_BOUNDS]
+                    max_mu = xdata[-(INDEX_OF_PEAK_BOUNDS+1)]
 
                     init_sd = xdata_width * 0.05
                     min_sd = xdata_width * 0.01

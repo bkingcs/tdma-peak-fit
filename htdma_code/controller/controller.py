@@ -21,6 +21,7 @@ class Controller:
         # scan selections
         self.main_view.scan_form.prev_scan_button.clicked.connect(self.prev_scan_button_clicked)
         self.main_view.scan_form.next_scan_button.clicked.connect(self.next_scan_button_clicked)
+        self.main_view.scan_form.scan_num_lineedit.returnPressed.connect(self.scan_num_lineedit_returnPressed)
         self.main_view.scan_form.rh_dspinbox.valueChanged.connect(self.rh_changed)
 
         # Peak fitting
@@ -87,6 +88,15 @@ class Controller:
             Qw.QMessageBox.warning(self.main_view,"Warning!","No more scans available!")
         else:
             # self.main_view.update_scan_widget_views_from_model()
+            self.main_view.update_from_model()
+
+    def scan_num_lineedit_returnPressed(self):
+        if not self.model.current_scan:
+            Qw.QMessageBox.warning(self.main_view,"No scans loaded!","Please load a file first")
+        else:
+            scan_num = int(self.main_view.scan_form.scan_num_lineedit.text())
+            if not self.model.select_scan(scan_num-1):
+                Qw.QMessageBox.warning(self.main_view,"Warning!",f"Invalid scan number: {scan_num}")
             self.main_view.update_from_model()
 
     def peak_fit_button_clicked(self):

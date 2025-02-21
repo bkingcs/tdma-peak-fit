@@ -35,7 +35,7 @@ from htdma_code.model.model import Model
 from htdma_code.view.main_window import MainWindow
 
 # Main version number for the software
-SW_VERSION="202407216.01"
+SW_VERSION="20250221.01"
 
 if __name__ == '__main__':
 
