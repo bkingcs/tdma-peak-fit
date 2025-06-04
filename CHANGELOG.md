@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ###Fixed
 
+[20250604.01]
+
+###Added
+- Added MIT Licence headers with my copyright to source code files
+- model, controller, scan py files had documentation improvements made
+
+###Changed
+- Modified prominence thresholds in peak detection (changed from `/10` to `/20` and `/20` to `/30`)
+
+###Fixed
+- Improvements made to improve error handling in scan.py, including adding a proper try-catch block when the curve_fit function doesn't do its thing
+
 [20250221.1]
 
 ###Added

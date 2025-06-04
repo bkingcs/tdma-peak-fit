@@ -1,10 +1,32 @@
 """
+MIT License
+
+Copyright (c) 2023-25 Brian R. King
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
 This class represents a single Scan from a run. This code will handle
 everything related to one scan, including curve fitting.
 
-
-
-Let's recall the standard normal distribution as defined by the quintessential probability density function:
+Let's recall the standard normal distribution as defined by the quintessential
+probability density function:
 - https://en.wikipedia.org/wiki/Normal_distribution
 
 - $f(x) = \frac{1}{\sigma \sqrt{2 \pi}}e^{-\frac{1}{2}(\frac{x - \mu}{\sigma})^2}$
@@ -370,13 +392,18 @@ class Scan:
                     print("max bounds = {}".format(bounds[1][peak * 3:(peak + 1) * 3]))
 
             # Fit the desired number of peaks for this pass
-            popt, pcov = scipy.optimize.curve_fit(
-                fit_func,
-                xdata[sel],
-                ydata_smoothed[sel],
-                p0=p0_init,
-                bounds=bounds
-            )
+            try:
+                popt, pcov = scipy.optimize.curve_fit(
+                    fit_func,
+                    xdata[sel],
+                    ydata_smoothed[sel],
+                    p0=p0_init,
+                    bounds=bounds
+                )
+            except RuntimeError as e:
+                print(f"Warning: Fitting failed - {str(e)}")
+                # Handle the error appropriately, maybe try with different initial conditions
+                return None
             # perr_gauss = np.sqrt(np.diag(pcov_gauss))
 
             # Create the peak results object
@@ -633,14 +660,14 @@ def predict_peaks(data, is_scan: bool, verbose=False):
     # - how much a peak stands out from the surrounding baseline
     #   of the signal and is defined as the vertical distance between
     #   the peak and its lowest contour line
-    prominence = ((x.max() - x.min()) / 10,
+    prominence = ((x.max() - x.min()) / 20,
                   (x.max() - x.min()))
     if not is_scan:
         x = np.multiply(x, -1.0)
         #distance=5
         width=3
         rel_height= 0.25
-        prominence = ((x.max() - x.min()) / 20,
+        prominence = ((x.max() - x.min()) / 30,
                       (x.max() - x.min()))
 
     i_pk, other = scipy.signal.find_peaks(x,

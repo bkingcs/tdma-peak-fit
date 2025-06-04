@@ -38,8 +38,12 @@ The software is built on Python 3.10, with a variety of packages. The primary UI
 
 ### Building Executable for Windows (taken from LILAC docs)
 - [ ] Build EXE for Windows
-  - Activate your HTDMA environment
-  - `pyinstaller main.spec --workpath ./build --distpath ./dist --clean`
+    - Document the CHANGELOG.md file
+    - Make sure main.py has the correct version
+    - Activate your HTDMA environment
+    - `pyinstaller main.spec --workpath ./build --distpath ./dist --clean`
+    - Executable will be placed in dist
+    - Commit and push everything up to Github
 
   
 ### PyQt5 / PySide2 Resources

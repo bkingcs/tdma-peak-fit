@@ -1,6 +1,29 @@
 """
-Model
+MIT License
+
+Copyright (c) 2023-25 Brian R. King
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
 """
+
 from htdma_code.model.setupmods.setup import Setup
 from htdma_code.model.dma1 import DMA_1
 from htdma_code.model.scan import Scan
@@ -9,12 +32,14 @@ from htdma_code.model.results_table import ResultsTableModel
 
 class Model:
     """
-    This is the main class that encapsulates pretty much everything for a complete run
+    Represents a data analysis model that manages scans, setup configurations, and
+    graphing parameters. This class is responsible for processing files, managing selected
+    scans, and updating scan-related data internally.
 
-    Attributes:
-        setup - an instance of the Setup class
-        scans - an instance of Scans, which represents all of the scans of a given run
-        dma1 - an instance of DMA_1, which represents the configuation of DMA_1
+    This model encapsulates the functionality of reading and processing scan files, storing
+    the scans data in a structured format, and managing the state of currently selected scans.
+    It also provides methods for navigating the scans (selecting, moving to next/previous scans)
+    and maintains settings related to graphing such as autoscaling parameters.
     """
     def __init__(self):
         self.setup = Setup()

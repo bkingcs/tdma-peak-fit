@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2023-24 Brian R. King
+Copyright (c) 2023-25 Brian R. King
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ from htdma_code.model.model import Model
 from htdma_code.view.main_window import MainWindow
 
 # Main version number for the software
-SW_VERSION="20250221.01"
+SW_VERSION="20250604.01"
 
 if __name__ == '__main__':
 
